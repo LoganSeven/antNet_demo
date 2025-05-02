@@ -5,7 +5,6 @@ from qtpy.QtCore import QObject
 from core.callback_adapter import QCCallbackToSignal
 from ffi.backend_api import AntNetWrapper
 
-
 class Worker(QObject):
     """
     Worker: handles backend C operations asynchronously in a separate thread.
@@ -33,18 +32,26 @@ class Worker(QObject):
             # Fetch structured best path
             path_info = self.backend.get_best_path_struct()
 
-            # Emit best path updated
+            # Emit "best path updated"
             if path_info is not None:
                 self.callback_adapter.on_best_path_callback(path_info)
 
-            # Emit iteration done
+            # Emit "iteration done"
             self.callback_adapter.on_iteration_callback()
+
+        # The loop is finished here, so the thread will soon exit.
+        # We'll call self.shutdown_backend() later from CoreManager, *after* thread exit.
 
     def stop(self):
         """
-        Gracefully stop the worker loop and release backend.
+        Signal the worker to stop its main loop.
         """
         self._stop_event.set()
-        if self.backend:
+
+    def shutdown_backend(self):
+        """
+        Shut down the backend if it exists.
+        """
+        if self.backend is not None:
             self.backend.shutdown()
             self.backend = None
