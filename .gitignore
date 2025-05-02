@@ -28,6 +28,7 @@
 # ========================
 # Python
 # ========================
+/venv/
 *.pyc
 *.pyo
 *.pyd
@@ -37,7 +38,10 @@ __pycache__/
 # ========================
 # VSCode / VsCodium
 # ========================
-.vscode/
+/.vscode/*
+!/.vscode/settings.json
+!/.vscode/launch.json
+!/.vscode/tasks.json
 .history/
 *.code-workspace
 

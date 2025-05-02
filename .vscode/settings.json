@@ -1,0 +1,26 @@
+{
+  // Python
+  "python.pythonPath": "${workspaceFolder}/venv/bin/python",
+  "python.analysis.extraPaths": ["src/python"],
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.linting.mypyEnabled": true,
+  "python.formatting.provider": "black",
+  "python.testing.unittestEnabled": true,
+
+  // C / C++ IntelliSense
+  "C_Cpp.default.compilerPath": "/usr/bin/gcc",
+  "C_Cpp.default.includePath": [
+    "${workspaceFolder}/include",
+    "${workspaceFolder}/src/c"
+  ],
+  "C_Cpp.default.defines": [],
+  "files.associations": {
+    "*.h": "c"
+  },
+
+  // CMake Tools
+  "cmake.sourceDirectory": "${workspaceFolder}",
+  "cmake.buildDirectory": "${workspaceFolder}/build",
+  "cmake.configureOnOpen": true
+}

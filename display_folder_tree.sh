@@ -6,7 +6,8 @@ function display_tree {
     local indent=$2
 
     # Liste des répertoires et fichiers à exclure
-    local exclude_dirs=(".cache" ".vscode" "sdl_lib_src" "SDL" "build" "Documentation")
+    local exclude_dirs=(".cache" ".pytest_cache" "tests/__pycache__" ".vscode" "sdl_lib_src" 
+    "SDL" "build/.cmake" "build/CMakeFiles" "build/python" "Documentation" "venv")
 
     # Vérifie si le répertoire doit être exclu
     local exclude=0
