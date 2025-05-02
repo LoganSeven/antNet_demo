@@ -1,0 +1,88 @@
+# ========================
+# Compiled object files
+# ========================
+*.o
+*.obj
+*.so
+*.dll
+*.a
+*.lib
+*.lo
+
+# ========================
+# Compiled binaries
+# ========================
+*.exe
+*.out
+*.elf
+*.bin
+
+# ========================
+# Build folders
+# ========================
+/build/
+/src/c/build/
+/src/python/__pycache__/
+/src/python/**/*.pyc
+
+# ========================
+# Python
+# ========================
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.log
+
+# ========================
+# VSCode / VsCodium
+# ========================
+.vscode/
+.history/
+*.code-workspace
+
+# ========================
+# PyCharm
+# ========================
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# ========================
+# CMake / Make
+# ========================
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# ========================
+# OS metadata (just in case)
+# ========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================
+# Logs and dumps
+# ========================
+*.log
+*.trace
+*.core
+
+# ========================
+# Temporary files
+# ========================
+*~
+*.swp
+*.swo
+*.tmp
+
+# ========================
+# Documentation temporary
+# ========================
+/documentation/*.aux
+/documentation/*.toc
+/documentation/*.log
+/documentation/*.out
