@@ -8,6 +8,8 @@ from qtpy.QtWidgets import (
     QSplitter,
 )
 from core.core_manager import CoreManager
+from gui.graph_view.graph_canvas import GraphCanvas
+
 
 class MainWindow(QMainWindow):
     """
@@ -65,27 +67,34 @@ class MainWindow(QMainWindow):
         self.main_splitter.setSizes([400, 400])
         self.sub_splitter.setSizes([200, 200])
 
-        # Prepare layout for Zone 1 to hold the existing controls
+        # Zone 1 layout: place a GraphCanvas for the node/edge visualization
         zone1_layout = QVBoxLayout(self.zone1)
+        self.graph_canvas = GraphCanvas(self.zone1)
+        zone1_layout.addWidget(self.graph_canvas)
 
-        # Connect adapter signals and create labels
+        # Zone 2 layout: place iteration/best-path labels and controls
+        zone2_layout = QVBoxLayout(self.zone2)
+
         adapters = self.core_manager.get_callback_adapters()
         for idx, adapter in enumerate(adapters):
-            label = QLabel(f"Worker {idx} Best Path: --", self.zone1)
+            label = QLabel(f"Worker {idx} Best Path: --", self.zone2)
             self.label_best_paths.append(label)
-            zone1_layout.addWidget(label)
+            zone2_layout.addWidget(label)
 
             adapter.signal_best_path_updated.connect(
                 lambda path_info, idx=idx: self.update_best_path(idx, path_info)
             )
             adapter.signal_iteration_done.connect(self.on_iteration_done)
 
-        self.label_iterations = QLabel("Iterations: 0", self.zone1)
-        zone1_layout.addWidget(self.label_iterations)
+        self.label_iterations = QLabel("Iterations: 0", self.zone2)
+        zone2_layout.addWidget(self.label_iterations)
 
-        self.button_stop = QPushButton("Stop All Workers", self.zone1)
+        self.button_stop = QPushButton("Stop All Workers", self.zone2)
         self.button_stop.clicked.connect(self.core_manager.stop)
-        zone1_layout.addWidget(self.button_stop)
+        zone2_layout.addWidget(self.button_stop)
+
+        # Zone 3 remains empty for now (placeholder)
+        # Additional widgets can be placed here later
 
     def update_best_path(self, worker_idx, path_info):
         """
