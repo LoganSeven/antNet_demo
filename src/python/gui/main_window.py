@@ -168,7 +168,7 @@ class MainWindow(QMainWindow):
         if self._zone2_base_size is None:
             self._zone2_base_size = self.zone2.size()
             current_font = self.zone2.font()
-            # If pointSize == -1, it's in pixels, so use pixelSize
+            # If pointSize == -1, it is in pixels, so use pixelSize
             if current_font.pointSize() > 0:
                 self._zone2_base_font_size = current_font.pointSize()
             else:
@@ -185,7 +185,6 @@ class MainWindow(QMainWindow):
             new_font_size = max(1, int(self._zone2_base_font_size * scale))
 
             current_font = self.zone2.font()
-            # Could use setPixelSize for uniform cross-platform
             current_font.setPointSize(new_font_size)
 
             self.zone2.setFont(current_font)
