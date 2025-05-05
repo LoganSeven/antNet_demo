@@ -55,6 +55,9 @@
 
 ## Configurable Parameters
 
+/!\ this is work in progress it will change over time:
+this part will be updated time to time.
+
 - Number of graph nodes
 - (x, y) positions for each node
 - Explicit node-to-node connections
@@ -100,3 +103,4 @@ _“Please be kind with artificial life — one day, it could well be a good tim
 
 ## Version history
 0.0.1-alpha.1 MVP with mockup ant colony algorithm
+0.0.2-alpha.1 MVP minimal gui interface and signal manager. Communication with c backend tested.
