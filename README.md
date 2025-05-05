@@ -102,5 +102,5 @@ Powered by **Python**, **QtPy**, and **pure C**
 _“Please be kind with artificial life — one day, it could well be a good time investment.”_
 
 ## Version history
-0.0.1-alpha.1 MVP with mockup ant colony algorithm
-0.0.2-alpha.1 MVP minimal gui interface and signal manager. Communication with c backend tested.
+- 0.0.1-alpha.1 MVP with mockup ant colony algorithm
+- 0.0.2-alpha.1 MVP minimal gui interface and signal manager. Communication with c backend tested.
