@@ -1,4 +1,4 @@
-# gui/manager/signal_manager.py
+# gui/managers/signal_manager.py
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
@@ -37,17 +37,13 @@ class SignalManager(QObject):
         print("Horizontal splitter released")
         self.main_window.control.label_manager.adjust_font_to_width()
         self.main_window.control.button_manager.adjust_font_to_width()
-  
-         
 
     def on_vertical_splitter_released(self):
         print("Vertical splitter released")
         self.main_window.control.label_manager.adjust_font_to_width()
         self.main_window.control.button_manager.adjust_font_to_width()
 
-
     def on_window_resize_finished(self):
         print("Window resize finished")
         self.main_window.control.label_manager.adjust_font_to_width()
         self.main_window.control.button_manager.adjust_font_to_width()
-
