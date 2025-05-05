@@ -12,7 +12,6 @@ def main():
     print("👉 Starting AntNet Demo GUI…")
     app = QApplication(sys.argv)
     window = MainWindow()
-    window.resize(800, 600)
     window.show()
     print("✅ Window shown, entering event loop")
     sys.exit(app.exec_())

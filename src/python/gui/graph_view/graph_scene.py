@@ -1,14 +1,13 @@
 import random
 from qtpy.QtWidgets import QGraphicsScene
-from qtpy.QtCore import QRectF
+from qtpy.QtCore import QRectF, Qt
 from .node_item import NodeItem
 from .edge_item import EdgeItem
-from qtpy.QtCore import Qt
 
 class GraphScene(QGraphicsScene):
     """
     QGraphicsScene that manages start node, end node, and a list of hop nodes separately.
-    Spacing is enforced so that hop nodes do not overlap. 
+    Spacing is enforced so that hop nodes do not overlap.
     """
 
     def __init__(self, width=1000, height=600, total_nodes=16, parent=None):
@@ -24,9 +23,7 @@ class GraphScene(QGraphicsScene):
         self.start_node = None
         self.end_node = None
         self.hop_nodes = []  # Only the middle hops
-
-        # For drawing and clearing the best path
-        self.best_path_edges = []
+        self.best_path_edges = []  # For drawing and clearing the best path
 
         self._create_nodes()
 
@@ -66,7 +63,7 @@ class GraphScene(QGraphicsScene):
         hop_count = self.total_nodes - 2
         for i in range(hop_count):
             node = self._place_random_hop(
-                label=f"hop #{i}",  # zero-based labeling: hop #0, hop #1, etc.
+                label=f"hop #{i}",  # zero-based labeling
                 color=(100, 150, 200),
                 radius=radius,
                 margin=margin
@@ -104,14 +101,14 @@ class GraphScene(QGraphicsScene):
         for hop_node in self.hop_nodes:
             dx = hop_node.x - x
             dy = hop_node.y - y
-            dist_sq = dx * dx + dy * dy
-            if dist_sq < (spacing * spacing):
+            if dx*dx + dy*dy < spacing*spacing:
                 return False
         return True
 
     def draw_best_path_by_hop_indices(self, hop_indices):
         """
-        Draws edges between consecutive hop indices from self.hop_nodes.
+        Draws edges from start_node through hops to end_node.
+        Always connects nearest hop to start and nearest to end.
         Clears any previously drawn path edges.
         """
         # Remove old edges
@@ -119,25 +116,35 @@ class GraphScene(QGraphicsScene):
             self.removeItem(edge)
         self.best_path_edges.clear()
 
-        if len(hop_indices) < 2:
+        # Collect valid hop NodeItems
+        nodes = [self.hop_nodes[i] for i in hop_indices if 0 <= i < len(self.hop_nodes)]
+
+        # If no valid hops, draw direct start->end
+        if not nodes:
+            edge = EdgeItem(
+                self.start_node.x, self.start_node.y,
+                self.end_node.x, self.end_node.y,
+                color=Qt.red, pen_width=3
+            )
+            self.addItem(edge)
+            self.best_path_edges.append(edge)
             return
 
-        # Connect consecutive pairs of hop indices
-        for i in range(len(hop_indices) - 1):
-            idx1 = hop_indices[i]
-            idx2 = hop_indices[i + 1]
+        # Distance squared helper
+        def dist(a, b): return (a.x - b.x)**2 + (a.y - b.y)**2
 
-            # Validate that the hop index is in range
-            if idx1 < 0 or idx1 >= len(self.hop_nodes):
-                continue
-            if idx2 < 0 or idx2 >= len(self.hop_nodes):
-                continue
+        # Find nearest to start and nearest to end
+        start_hop = min(nodes, key=lambda n: dist(n, self.start_node))
+        end_hop = min(nodes, key=lambda n: dist(n, self.end_node))
 
-            x1 = self.hop_nodes[idx1].x
-            y1 = self.hop_nodes[idx1].y
-            x2 = self.hop_nodes[idx2].x
-            y2 = self.hop_nodes[idx2].y
+        # Middle hops exclude start_hop and end_hop
+        middle = [n for n in nodes if n not in (start_hop, end_hop)]
 
-            edge = EdgeItem(x1, y1, x2, y2, color=Qt.red, pen_width=3)
+        # Full sequence: start -> start_hop -> middle... -> end_hop -> end
+        sequence = [self.start_node, start_hop] + middle + [end_hop, self.end_node]
+
+        # Draw edges between consecutive items
+        for a, b in zip(sequence, sequence[1:]):
+            edge = EdgeItem(a.x, a.y, b.x, b.y, color=Qt.red, pen_width=3)
             self.addItem(edge)
             self.best_path_edges.append(edge)

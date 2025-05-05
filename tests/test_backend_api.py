@@ -19,5 +19,5 @@ def test_basic_backend_integration():
     assert result is not None
     assert isinstance(result["nodes"], list)
     assert isinstance(result["total_latency"], int)
-    assert len(result["nodes"]) == 4
+    assert len(result["nodes"]) == 6
     wrapper.shutdown()
