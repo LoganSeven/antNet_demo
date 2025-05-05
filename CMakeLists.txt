@@ -28,16 +28,17 @@ include_directories(
 # ------------------ Source files ----------------------------------
 set(SOURCE_FILES
     src/c/backend.c
-    # Add other .c files here if needed
+    src/c/backend_topology.c
 )
 
 # ------------------ Build shared library --------------------------
 add_library(antnet_backend SHARED ${SOURCE_FILES})
 
 # ------------------ Linking ---------------------------------------
-# (Add if you later link to math or pthread explicitly)
+# Link math and pthread on Unix-like systems if needed
 if(UNIX AND NOT APPLE)
-    target_link_libraries(antnet_backend PRIVATE m)
+    find_package(Threads REQUIRED)
+    target_link_libraries(antnet_backend PRIVATE m Threads::Threads)
 endif()
 
 # ------------------ Install targets (optional) --------------------

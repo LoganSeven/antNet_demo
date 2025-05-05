@@ -1,3 +1,5 @@
+# src/python/core/worker.py
+
 import time
 from threading import Event
 from qtpy.QtCore import QObject
@@ -16,7 +18,7 @@ class Worker(QObject):
         self._stop_event = Event()
         self.callback_adapter = QCCallbackToSignal()
 
-        # Initialize backend C context with placeholder parameters
+        # Initialize backend C context
         self.backend = AntNetWrapper(node_count=10, min_hops=2, max_hops=5)
 
     def run(self):
@@ -24,12 +26,12 @@ class Worker(QObject):
         Main loop for backend processing.
         """
         while not self._stop_event.is_set():
-            time.sleep(0.5)  # Control the loop pacing
+            time.sleep(0.5)  # Control loop pacing
 
-            # Run one iteration in C
+            # Run one iteration
             self.backend.run_iteration()
 
-            # Fetch structured best path
+            # Fetch best path
             path_info = self.backend.get_best_path_struct()
 
             # Emit "best path updated"
@@ -38,9 +40,6 @@ class Worker(QObject):
 
             # Emit "iteration done"
             self.callback_adapter.on_iteration_callback()
-
-        # The loop is finished here, so the thread will soon exit.
-        # We'll call self.shutdown_backend() later from CoreManager, *after* thread exit.
 
     def stop(self):
         """
@@ -55,3 +54,10 @@ class Worker(QObject):
         if self.backend is not None:
             self.backend.shutdown()
             self.backend = None
+
+    def update_topology(self, nodes, edges):
+        """
+        Update the topology in the backend context.
+        """
+        if self.backend:
+            self.backend.update_topology(nodes, edges)
