@@ -24,6 +24,7 @@ endif()
 # Ensure this covers error_codes.h, random_algo.h, etc.
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/third_party
 )
 
 # ------------------ Source files ----------------------------------
@@ -34,6 +35,8 @@ set(SOURCE_FILES
     src/c/random_algo.c
     src/c/cpu_brute_force.c
     src/c/cpu_ACOv1.c
+    src/c/config_manager.c             
+    third_party/ini.c                  
 )
 
 # ------------------ Build shared library --------------------------
