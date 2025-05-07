@@ -10,8 +10,8 @@
  #include <stdio.h>
  #include <stdlib.h>
  #include <time.h>
- #include "error_codes.h"
- #include "random_algo.h"
+ #include "../../include/error_codes.h"
+ #include "../../include/random_algo.h"
  
  /*
   * The commented code below is kept for future usage; it is not removed.

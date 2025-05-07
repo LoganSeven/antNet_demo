@@ -1,8 +1,8 @@
 //src/c/cpu_ACOv1.c
 #include <stdio.h>
 #include <stdlib.h>
-#include "cpu_ACOv1.h"
-#include "error_codes.h"
+#include "../../include/cpu_ACOv1.h"
+#include "../../include/error_codes.h"
 
 /*
  * aco_v1_init: stub

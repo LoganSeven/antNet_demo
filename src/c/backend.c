@@ -1,10 +1,11 @@
-//src/c/backend.c
-#include "backend.h"
-#include "backend_topology.h"
-#include "error_codes.h"
-#include "cpu_ACOv1.h"
-#include "random_algo.h"
-#include "cpu_brute_force.h"
+// src/c/backend.c
+#include "../../include/backend.h"
+#include "../../include/backend_topology.h"
+#include "../../include/error_codes.h"
+#include "../../include/cpu_ACOv1.h"
+#include "../../include/random_algo.h"
+#include "../../include/cpu_brute_force.h"
+#include "../../include/config_manager.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,6 +57,13 @@ int antnet_initialize(int node_count, int min_hops, int max_hops)
             ctx->random_best_length = 0;
             ctx->random_best_latency = 0;
             memset(ctx->random_best_nodes, 0, sizeof(ctx->random_best_nodes));
+
+            // Fill entire config in context with defaults, then override
+            config_set_defaults(&ctx->config);
+            ctx->config.set_nb_nodes = node_count;
+            ctx->config.min_hops     = min_hops;
+            ctx->config.max_hops     = max_hops;
+            // (Other config fields remain at defaults for now)
 
 #ifndef _WIN32
             // Initialize mutex for this context
@@ -287,4 +295,52 @@ int antnet_run_all_solvers(
 #endif
 
     return ERR_SUCCESS;
+}
+
+/*
+ * antnet_init_from_config: loads an INI file, sets up the config, and calls antnet_initialize.
+ * We store the loaded config in the context for future usage, but only min_hops, max_hops
+ * (and set_nb_nodes) are actively used for now.
+ */
+int antnet_init_from_config(const char* config_path)
+{
+    if (!config_path) {
+        return ERR_INVALID_ARGS;
+    }
+
+    // Load config from file
+    AppConfig tmpcfg;
+    config_set_defaults(&tmpcfg);  // ensures we start with safe defaults
+    if (!config_load(&tmpcfg, config_path)) {
+        // failed to load config or parse .ini
+        return -1; // or any negative error code you prefer
+    }
+
+    // Create a context with the loaded parameters
+    int context_id = antnet_initialize(
+        tmpcfg.set_nb_nodes,
+        tmpcfg.min_hops,
+        tmpcfg.max_hops
+    );
+    if (context_id < 0) {
+        // failed to create a context
+        return context_id; // pass the error code from antnet_initialize
+    }
+
+    // Retrieve the context, store entire config struct for future usage
+    AntNetContext* ctx = get_context_by_id(context_id);
+    if (!ctx) {
+        // extremely unlikely edge case
+        return ERR_INVALID_CONTEXT;
+    }
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    ctx->config = tmpcfg;  // store all fields, in case needed later
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    return context_id;
 }

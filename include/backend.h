@@ -3,6 +3,8 @@
 #define BACKEND_H
 
 #include "backend_topology.h"
+#include "config_manager.h"  // For AppConfig
+#include "error_codes.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +59,12 @@ typedef struct AntNetContext
     int random_best_length;
     int random_best_latency;
 
+    /*
+     * The loaded configuration is stored here for future usage (min_hops, etc.).
+     * We only actively use min_hops, max_hops in the code for now.
+     */
+    AppConfig config;
+
 } AntNetContext;
 
 /**
@@ -96,7 +104,6 @@ int antnet_get_best_path(
  * antnet_update_topology: declared in backend_topology.h
  * This call replaces the existing node/edge data in the context.
  */
-
 
 /**
  * antnet_run_all_solvers: runs the aco, random, and brute force solvers in sequence,
@@ -138,6 +145,13 @@ int antnet_run_all_solvers(
     int* out_len_brute,
     int* out_latency_brute
 );
+
+/**
+ * antnet_init_from_config: loads settings.ini from disk, creates a new context,
+ * and sets min_hops, max_hops, node_count, etc. from the loaded config.
+ * Returns context_id >= 0 on success, negative on error.
+ */
+int antnet_init_from_config(const char* config_path);
 
 #ifdef __cplusplus
 }

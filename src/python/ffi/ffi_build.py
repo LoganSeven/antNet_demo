@@ -1,4 +1,4 @@
-#src/python/ffi/ffi_build.py
+# src/python/ffi/ffi_build.py
 import os
 from cffi import FFI
 
@@ -20,13 +20,15 @@ ffi.cdef(
         int* out_total_latency
     );
 
-    // new function for running all solvers
     int antnet_run_all_solvers(
         int context_id,
         int* out_nodes_aco,    int max_size_aco,    int* out_len_aco,    int* out_latency_aco,
         int* out_nodes_random, int max_size_random, int* out_len_random, int* out_latency_random,
         int* out_nodes_brute,  int max_size_brute,  int* out_len_brute,  int* out_latency_brute
     );
+
+    // new config-based init
+    int antnet_init_from_config(const char* config_path);
 
     // from backend_topology.h
     typedef struct {
@@ -60,6 +62,9 @@ topo_source      = os.path.join(src_c_dir, "backend_topology.c")
 random_source    = os.path.join(src_c_dir, "random_algo.c")
 brute_source     = os.path.join(src_c_dir, "cpu_brute_force.c")
 aco_source       = os.path.join(src_c_dir, "cpu_ACOv1.c")
+config_mgr       = os.path.join(src_c_dir, "config_manager.c")
+hopmap_source    = os.path.join(src_c_dir, "hop_map_manager.c")
+ini_c            = os.path.join(this_dir, "../../../third_party/ini.c")  # If needed, but typically only config_manager needs it.
 
 ffi.set_source(
     "backend_cffi",              # name of the generated module (.so/.pyd)
@@ -69,9 +74,13 @@ ffi.set_source(
         topo_source,
         random_source,
         brute_source,
-        aco_source
+        aco_source,
+        config_mgr,
+        hopmap_source,
+        # We compile ini.c if it is not already compiled into a separate library.
+        ini_c
     ],
-    include_dirs=[include_dir],  # directory for #include
+    include_dirs=[include_dir, os.path.join(this_dir, "../../../third_party")],  # directories for #include
 )
 
 if __name__ == "__main__":

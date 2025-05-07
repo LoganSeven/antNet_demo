@@ -1,4 +1,5 @@
-#include "hop_map_manager.h"
+//src/c/hop_map_manager.c
+#include "../../include/hop_map_manager.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

@@ -8,10 +8,34 @@ class AntNetWrapper:
     Uses integer context IDs and exposes best path information as a dict.
     """
 
-    def __init__(self, node_count, min_hops, max_hops):
-        self.context_id = lib.antnet_initialize(node_count, min_hops, max_hops)
-        if self.context_id < 0:
-            raise RuntimeError("Failed to initialize AntNet context.")
+    def __init__(self, node_count=None, min_hops=None, max_hops=None, from_config=None):
+        """
+        If from_config is a string (INI file path), we call antnet_init_from_config.
+        Otherwise, we use antnet_initialize with the provided node_count/min_hops/max_hops.
+        """
+        self.context_id = None
+
+        if from_config is not None:
+            if not isinstance(from_config, str):
+                raise ValueError("from_config must be a string path to the INI file.")
+            ctx_id = lib.antnet_init_from_config(from_config.encode('utf-8'))
+            if ctx_id < 0:
+                raise RuntimeError("Failed to initialize AntNet context from config.")
+            self.context_id = ctx_id
+        else:
+            if node_count is None or min_hops is None or max_hops is None:
+                raise ValueError("Must supply node_count, min_hops, max_hops if not using from_config.")
+            ctx_id = lib.antnet_initialize(node_count, min_hops, max_hops)
+            if ctx_id < 0:
+                raise RuntimeError("Failed to initialize AntNet context.")
+            self.context_id = ctx_id
+
+    @classmethod
+    def from_config(cls, config_path):
+        """
+        Alternative constructor that creates an AntNetWrapper from a config file.
+        """
+        return cls(from_config=config_path)
 
     def run_iteration(self):
         rc = lib.antnet_run_iteration(self.context_id)
