@@ -12,41 +12,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: "Checkout repository"
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: "Set up Python"
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Install system packages
+      - name: "Install system packages"
         run: |
           sudo apt update
           sudo apt install -y gcc make cmake python3-dev
 
-      - name: Install Python dependencies
+      - name: "Install Python dependencies"
         run: |
           python -m pip install --upgrade pip
           pip install cffi pytest
 
-      - name: [1/4] Build C backend with CMake
+      - name: "[1/4] Build C backend with CMake"
         run: |
           cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug
           cmake --build build
 
-      - name: [2/4] Build Python CFFI bindings
+      - name: "[2/4] Build Python CFFI bindings"
         run: |
           python3 src/python/ffi/ffi_build.py
 
-      - name: [3/4] Copy compiled module to FFI folder
+      - name: "[3/4] Copy compiled module to FFI folder"
         run: |
           mkdir -p src/python/ffi
           cp build/python/backend_cffi*.so src/python/ffi/
 
-      - name: [4/4] Run pytest suite
+      - name: "[4/4] Run pytest suite"
         run: |
           python3 -m pytest tests/
 
-      - name: ✅ Done
+      - name: "✅ Done"
         run: echo "Build and tests completed successfully."
