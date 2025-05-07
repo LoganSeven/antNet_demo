@@ -1,9 +1,11 @@
+//src/c/backend_topology.c
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 #include "backend.h"
 #include "backend_topology.h"
+#include "error_codes.h"
 
 /**
  * get_context_by_id: forward declaration from backend.c
@@ -11,7 +13,7 @@
  */
 extern AntNetContext* get_context_by_id(int);
 
-/**
+/*
  * antnet_update_topology: replaces the context's node/edge arrays with the given ones.
  * The function is thread-safe due to the context-level mutex.
  */
@@ -25,7 +27,7 @@ int antnet_update_topology(
 {
     AntNetContext* ctx = get_context_by_id(context_id);
     if (!ctx) {
-        return -1; // invalid context
+        return ERR_INVALID_CONTEXT; // invalid context
     }
 
 #ifndef _WIN32
@@ -51,7 +53,7 @@ int antnet_update_topology(
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
-            return -2; // memory allocation failure
+            return ERR_MEMORY_ALLOCATION; // memory allocation failure
         }
         memcpy(ctx->nodes, nodes, sizeof(NodeData) * num_nodes);
     } else {
@@ -63,12 +65,13 @@ int antnet_update_topology(
     if (num_edges > 0) {
         ctx->edges = (EdgeData*)malloc(sizeof(EdgeData) * num_edges);
         if (!ctx->edges) {
+            // Release node array if edge array fails
             free(ctx->nodes);
             ctx->nodes = NULL;
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
-            return -3;
+            return ERR_MEMORY_ALLOCATION;
         }
         memcpy(ctx->edges, edges, sizeof(EdgeData) * num_edges);
     } else {
@@ -85,5 +88,5 @@ int antnet_update_topology(
     pthread_mutex_unlock(&ctx->lock);
 #endif
 
-    return 0; // success
+    return ERR_SUCCESS;
 }

@@ -52,7 +52,6 @@ class AntNetWrapper:
         num_nodes = len(nodes)
         num_edges = len(edges)
 
-        # Create C arrays
         node_array = ffi.new("NodeData[]", num_nodes)
         edge_array = ffi.new("EdgeData[]", num_edges)
 
@@ -74,11 +73,54 @@ class AntNetWrapper:
         if rc < 0:
             raise RuntimeError("Backend failed to update topology")
 
+    def run_all_solvers(self):
+        """
+        Runs ACO, random, and brute force solvers in one call.
+        Returns a dict with keys 'aco', 'random', and 'brute'.
+        Each sub-dict has 'nodes' and 'total_latency'.
+        """
+        max_nodes = 1024
+
+        out_nodes_aco    = ffi.new("int[]", max_nodes)
+        out_len_aco      = ffi.new("int*")
+        out_latency_aco  = ffi.new("int*")
+
+        out_nodes_random   = ffi.new("int[]", max_nodes)
+        out_len_random     = ffi.new("int*")
+        out_latency_random = ffi.new("int*")
+
+        out_nodes_brute    = ffi.new("int[]", max_nodes)
+        out_len_brute      = ffi.new("int*")
+        out_latency_brute  = ffi.new("int*")
+
+        rc = lib.antnet_run_all_solvers(
+            self.context_id,
+            out_nodes_aco,   max_nodes, out_len_aco,   out_latency_aco,
+            out_nodes_random, max_nodes, out_len_random, out_latency_random,
+            out_nodes_brute,  max_nodes, out_len_brute,  out_latency_brute
+        )
+        if rc != 0:
+            raise RuntimeError(f"run_all_solvers failed with error code {rc}")
+
+        return {
+            "aco": {
+                "nodes": [out_nodes_aco[i] for i in range(out_len_aco[0])],
+                "total_latency": out_latency_aco[0]
+            },
+            "random": {
+                "nodes": [out_nodes_random[i] for i in range(out_len_random[0])],
+                "total_latency": out_latency_random[0]
+            },
+            "brute": {
+                "nodes": [out_nodes_brute[i] for i in range(out_len_brute[0])],
+                "total_latency": out_latency_brute[0]
+            }
+        }
+
     def shutdown(self):
         if self.context_id is not None:
             lib.antnet_shutdown(self.context_id)
             self.context_id = None
 
     def __del__(self):
-        # Ensure context is cleaned up
         self.shutdown()

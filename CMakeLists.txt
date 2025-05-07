@@ -21,14 +21,19 @@ else()
 endif()
 
 # ------------------ Include directories ---------------------------
+# Ensure this covers error_codes.h, random_algo.h, etc.
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
 )
 
 # ------------------ Source files ----------------------------------
 set(SOURCE_FILES
+    src/c/hop_map_manager.c
     src/c/backend.c
     src/c/backend_topology.c
+    src/c/random_algo.c
+    src/c/cpu_brute_force.c
+    src/c/cpu_ACOv1.c
 )
 
 # ------------------ Build shared library --------------------------

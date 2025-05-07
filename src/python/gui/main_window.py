@@ -1,3 +1,4 @@
+#src/python/gui/main_window.py
 from qtpy.QtCore import Qt, QTimer, Signal, QEvent
 from qtpy.QtWidgets import (
     QMainWindow,
@@ -6,8 +7,7 @@ from qtpy.QtWidgets import (
     QSplitter,
     QLabel,
     QPushButton,
-    QSizePolicy,
-    QApplication
+    QSizePolicy
 )
 from qtpy.QtGui import QColor
 from core.core_manager import CoreManager
@@ -15,6 +15,9 @@ from gui.graph_view.graph_canvas import GraphCanvas
 from gui.control_widget import ControlWidget
 from gui.aco_visu_widget import AcoVisuWidget
 from gui.managers.signal_manager import SignalManager
+
+# Import the solver color constants
+from gui.consts.gui_consts import ALGO_COLORS
 
 class MainWindow(QMainWindow):
     splitter_horizontal_released = Signal()
@@ -30,11 +33,16 @@ class MainWindow(QMainWindow):
         self._is_dragging_splitter_v = False
         self._is_resizing_window = False
 
-        # Core system
+        # Create the CoreManager, but do NOT start workers yet
         self.core_manager = CoreManager()
-        self.core_manager.start(num_workers=1)
-
         self.iteration_count = 0
+
+        # Store last logged latencies for each solver to avoid duplicates
+        self.last_logged_latencies = {
+            "aco": None,
+            "random": None,
+            "brute": None
+        }
 
         # Main zones
         self.zone1 = QWidget()
@@ -121,8 +129,17 @@ class MainWindow(QMainWindow):
         self.button_update_topology.clicked.connect(self.on_button_update_topology)
         zone3_layout.addWidget(self.button_update_topology)
 
-        # Connect GUI signal manager
         self.signal_manager = SignalManager(self, self.control, self.core_manager)
+
+        # Create a default chain of edges so there's a guaranteed path
+        self.graph_canvas.scene.create_default_edges()
+
+        # Now start the workers (which create contexts in the C backend):
+        self.core_manager.start(num_workers=1)
+
+        # Immediately push the topology so each worker sees it before the first iteration:
+        topology_data = self.graph_canvas.scene.export_graph_topology()
+        self.core_manager.update_topology(topology_data)
 
         # Connect core system callbacks
         adapters = self.core_manager.get_callback_adapters()
@@ -151,11 +168,23 @@ class MainWindow(QMainWindow):
         self.sub_splitter.setSizes([sub_height // 2, sub_height // 2])
 
     def update_best_path(self, worker_idx, path_info):
-        hops = path_info.get("nodes", [])
-        latency = path_info.get("total_latency", "unknown")
-        log_msg = f"Worker {worker_idx} Best Path: {hops} (Latency: {latency}ms)"
-        self.aco_visu.addLog(log_msg, "#8B0000")
-        self.graph_canvas.scene.draw_best_path_by_hop_indices(hops)
+        """
+        Receives a dict with 'aco', 'random', and 'brute' sub-dicts,
+        each containing 'nodes' and 'total_latency'. Logs the info
+        and draws multiple paths simultaneously, skipping repeated latencies or empty paths.
+        """
+        for algo_key, algo_label in [("aco", "ACO"), ("random", "RND"), ("brute", "BF")]:
+            if algo_key in path_info:
+                data = path_info[algo_key]
+                nodes = data.get("nodes", [])
+                if nodes:
+                    latency = data.get("total_latency", 0)
+                    previous_latency = self.last_logged_latencies[algo_key]
+                    if previous_latency is None or previous_latency != latency:
+                        self.aco_visu.addLog(f"{algo_label}: {latency}", ALGO_COLORS[algo_key])
+                        self.last_logged_latencies[algo_key] = latency
+
+        self.graph_canvas.scene.draw_multiple_paths(path_info)
 
     def on_iteration_done(self):
         self.iteration_count += 1

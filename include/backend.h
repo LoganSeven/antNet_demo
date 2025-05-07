@@ -1,3 +1,4 @@
+// include/backend.h
 #ifndef BACKEND_H
 #define BACKEND_H
 
@@ -47,6 +48,15 @@ typedef struct AntNetContext
 #endif
 
     // ... (other fields related to ACA, threads, etc.)
+
+    /*
+     * random solver best path data
+     * The random solver updates this path if a better solution is found
+     */
+    int random_best_nodes[1024];
+    int random_best_length;
+    int random_best_latency;
+
 } AntNetContext;
 
 /**
@@ -86,6 +96,48 @@ int antnet_get_best_path(
  * antnet_update_topology: declared in backend_topology.h
  * This call replaces the existing node/edge data in the context.
  */
+
+
+/**
+ * antnet_run_all_solvers: runs the aco, random, and brute force solvers in sequence,
+ *                         storing each path in separate arrays.
+ * out_nodes_aco:    array to store the aco solver path
+ * max_size_aco:     capacity of out_nodes_aco
+ * out_len_aco:      actual path length of aco solver
+ * out_latency_aco:  sum of delays along aco path
+ *
+ * out_nodes_random: array to store the random solver path
+ * max_size_random:  capacity of out_nodes_random
+ * out_len_random:   actual path length
+ * out_latency_random: sum of delays along random path
+ *
+ * out_nodes_brute:  array to store the brute solver path
+ * max_size_brute:   capacity of out_nodes_brute
+ * out_len_brute:    actual path length
+ * out_latency_brute: sum of delays along brute path
+ *
+ * Returns 0 on success, negative on error.
+ */
+int antnet_run_all_solvers(
+    int context_id,
+    // aco
+    int* out_nodes_aco,
+    int max_size_aco,
+    int* out_len_aco,
+    int* out_latency_aco,
+
+    // random
+    int* out_nodes_random,
+    int max_size_random,
+    int* out_len_random,
+    int* out_latency_random,
+
+    // brute
+    int* out_nodes_brute,
+    int max_size_brute,
+    int* out_len_brute,
+    int* out_latency_brute
+);
 
 #ifdef __cplusplus
 }

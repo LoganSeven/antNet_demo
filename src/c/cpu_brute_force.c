@@ -1,3 +1,5 @@
+//src/c/cpu_brute_force.c
+
 /*
  * cpu_brute_force.c
  * Implements a depth-first search to examine all feasible paths between start_id and end_id
@@ -8,6 +10,7 @@
  #include <stdlib.h>
  #include <limits.h>
  #include "cpu_brute_force.h"
+ #include "error_codes.h"
  
  /*
   * Use a backtracking approach. For real usage in large graphs, this might be expensive,
@@ -94,10 +97,10 @@
  )
  {
      if (!ctx || !out_nodes || !out_path_len || !out_total_latency) {
-         return -1;
+         return ERR_INVALID_ARGS ;
      }
      if (ctx->num_nodes <= 0 || ctx->num_edges <= 0) {
-         return -2;
+         return ERR_NO_TOPOLOGY;
      }
  
      // Global variables for best solution
@@ -124,14 +127,13 @@
              }
              *out_path_len = best_path_len_global;
              *out_total_latency = best_latency_global;
-             return 0; // success
+             return ERR_SUCCESS; // success
          } else {
              // user-provided array too small
-             return -3;
+             return ERR_ARRAY_TOO_SMALL;
          }
      }
  
      // no valid path found
-     return -4;
+     return ERR_NO_PATH_FOUND;
  }
-

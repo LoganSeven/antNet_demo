@@ -1,3 +1,4 @@
+//include/random_algo.h
 #ifndef RANDOM_ALGO_H
 #define RANDOM_ALGO_H
 
@@ -14,10 +15,11 @@ extern "C" {
 #include "backend.h"
 
 /*
- * random_search_path: attempts to find a random path from start_id to end_id,
- * constrained by ctx->min_hops and ctx->max_hops. On success, places the path
- * into out_nodes, sets *out_path_len, and *out_total_latency. Returns 0 on success,
- * negative if no path can be found or an error occurs.
+ * random_search_path: attempts one new random path from start_id to end_id
+ * by randomly selecting a count of nodes in [ctx->min_hops..ctx->max_hops] from the
+ * available nodes, then updating ctx->random_best_* if the path is better.
+ * On success, returns 0 and copies the current best path (which may have been improved).
+ * If no path can be found or an error occurs, returns negative.
  */
 int random_search_path(
     AntNetContext* ctx,

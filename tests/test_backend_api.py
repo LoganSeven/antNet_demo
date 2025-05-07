@@ -1,5 +1,3 @@
-# tests/test_backend_api.py
-
 import os
 import sys
 

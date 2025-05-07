@@ -10,7 +10,6 @@ from ffi.backend_api import AntNetWrapper
 class Worker(QObject):
     """
     Worker: handles backend C operations asynchronously in a separate thread.
-    Calls C functions via CFFI and emits Qt signals via a callback adapter.
     """
 
     def __init__(self):
@@ -23,22 +22,19 @@ class Worker(QObject):
 
     def run(self):
         """
-        Main loop for backend processing.
+        Main loop for backend processing. Replaces the old iteration logic
+        with a single call that runs aco, random, and brute simultaneously.
         """
         while not self._stop_event.is_set():
-            time.sleep(0.5)  # Control loop pacing
+            time.sleep(0.5)
 
-            # Run one iteration
-            self.backend.run_iteration()
+            # Run all three solvers in one go
+            result_dict = self.backend.run_all_solvers()
 
-            # Fetch best path
-            path_info = self.backend.get_best_path_struct()
+            # Emit combined dictionary
+            self.callback_adapter.on_best_path_callback(result_dict)
 
-            # Emit "best path updated"
-            if path_info is not None:
-                self.callback_adapter.on_best_path_callback(path_info)
-
-            # Emit "iteration done"
+            # Emit iteration done
             self.callback_adapter.on_iteration_callback()
 
     def stop(self):

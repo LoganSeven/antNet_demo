@@ -1,8 +1,11 @@
+# src/python/gui/aco_visu_widget.py
+
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QScrollBar
 from qtpy.QtCore import Qt, QTimer, QEvent
 from qtpy.QtGui import QColor, QTextCharFormat
 
 import pyqtgraph as pg
+from pyqtgraph import PlotWidget  # ✅ always import it, never only in except
 import numpy as np
 
 opengl_available = False
@@ -15,8 +18,9 @@ try:
         opengl_available = True
 except Exception as e:
     print(f"OpenGL unavailable or unsupported: {e}")
-    from pyqtgraph import PlotWidget
+    # fallback will use PlotWidget
 
+from gui.consts.gui_consts import ALGO_COLORS
 
 class AcoVisuWidget(QWidget):
     def __init__(self, parent=None):
@@ -33,7 +37,7 @@ class AcoVisuWidget(QWidget):
             self.graph_widget = GLViewWidget()
         else:
             print("Using PlotWidget (2D fallback)")
-            self.graph_widget = pg.PlotWidget()
+            self.graph_widget = PlotWidget()
             self.graph_widget.setBackground('w')
             self.graph_widget.showGrid(x=True, y=True, alpha=0.3)
             self.graph_widget.getAxis('left').setPen(pg.mkPen(color='k'))
@@ -118,19 +122,19 @@ class AcoVisuWidget(QWidget):
 
         self.curve_performance_aco = self.graph_widget.plot(
             node_counts, aco_times,
-            pen=pg.mkPen('g', width=2),
+            pen=pg.mkPen(ALGO_COLORS["aco"], width=2),
             name="ACO"
         )
 
         self.curve_performance_brute = self.graph_widget.plot(
             node_counts, brute_times,
-            pen=pg.mkPen('r', width=2, style=Qt.DashLine),
+            pen=pg.mkPen(ALGO_COLORS["brute"], width=2, style=Qt.DashLine),
             name="Brute Force"
         )
 
         self.curve_performance_random = self.graph_widget.plot(
             node_counts, rand_times,
-            pen=pg.mkPen('y', width=2, style=Qt.DotLine),
+            pen=pg.mkPen(ALGO_COLORS["random"], width=2, style=Qt.DotLine),
             name="Random Pick"
         )
 
@@ -141,18 +145,12 @@ class AcoVisuWidget(QWidget):
         print("Demo graph rendered.")
 
     def addLog(self, message: str, color):
-        if isinstance(color, str):
-            try:
-                qcolor = QColor(color)
-                if not qcolor.isValid():
-                    raise ValueError("Invalid color string")
-            except Exception as e:
-                print(f"Invalid color string: {color}, error: {e}")
-                return
-        elif isinstance(color, QColor):
-            qcolor = color
-        else:
-            print(f"Invalid color type: {type(color)}")
+        try:
+            qcolor = QColor(color)
+            if not qcolor.isValid():
+                raise ValueError("Invalid color string")
+        except Exception as e:
+            print(f"Invalid color string: {color}, error: {e}")
             return
 
         cursor = self.text_area.textCursor()

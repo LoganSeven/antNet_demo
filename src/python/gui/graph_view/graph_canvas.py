@@ -1,3 +1,4 @@
+# src/python/gui/graph_view/graph_canvas.py
 from qtpy.QtWidgets import QGraphicsView
 from qtpy.QtCore import Qt
 from .graph_scene import GraphScene
@@ -9,7 +10,7 @@ class GraphCanvas(QGraphicsView):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Pass total_nodes=16, or an appropriate value
+        # The GraphScene is responsible for managing the HopMapManager internally
         self.scene = GraphScene(total_nodes=16)
         self.setScene(self.scene)
 

@@ -1,3 +1,4 @@
+#src/python/ffi/ffi_build.py
 import os
 from cffi import FFI
 
@@ -17,6 +18,14 @@ ffi.cdef(
         int max_size,
         int* out_path_len,
         int* out_total_latency
+    );
+
+    // new function for running all solvers
+    int antnet_run_all_solvers(
+        int context_id,
+        int* out_nodes_aco,    int max_size_aco,    int* out_len_aco,    int* out_latency_aco,
+        int* out_nodes_random, int max_size_random, int* out_len_random, int* out_latency_random,
+        int* out_nodes_brute,  int max_size_brute,  int* out_len_brute,  int* out_latency_brute
     );
 
     // from backend_topology.h
@@ -41,16 +50,28 @@ ffi.cdef(
 )
 
 # ---------- Build instructions ----------
-this_dir    = os.path.dirname(__file__)
-lib_source  = os.path.abspath(os.path.join(this_dir, "../../c/backend.c"))
-topo_source = os.path.abspath(os.path.join(this_dir, "../../c/backend_topology.c"))
-include_dir = os.path.abspath(os.path.join(this_dir, "../../../include"))
+this_dir     = os.path.dirname(__file__)
+src_c_dir    = os.path.abspath(os.path.join(this_dir, "../../c"))
+include_dir  = os.path.abspath(os.path.join(this_dir, "../../../include"))
+
+# Paths to all .c files that must be compiled
+lib_source       = os.path.join(src_c_dir, "backend.c")
+topo_source      = os.path.join(src_c_dir, "backend_topology.c")
+random_source    = os.path.join(src_c_dir, "random_algo.c")
+brute_source     = os.path.join(src_c_dir, "cpu_brute_force.c")
+aco_source       = os.path.join(src_c_dir, "cpu_ACOv1.c")
 
 ffi.set_source(
-    "backend_cffi",               # name of the generated module (.so/.pyd)
-    '#include "backend.h"',       # top-level header
-    sources=[lib_source, topo_source],  # the .c files to compile
-    include_dirs=[include_dir],         # directory for #include
+    "backend_cffi",              # name of the generated module (.so/.pyd)
+    '#include "backend.h"',      # top-level header
+    sources=[
+        lib_source,
+        topo_source,
+        random_source,
+        brute_source,
+        aco_source
+    ],
+    include_dirs=[include_dir],  # directory for #include
 )
 
 if __name__ == "__main__":

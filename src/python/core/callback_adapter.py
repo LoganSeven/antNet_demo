@@ -1,3 +1,4 @@
+# src/python/core/callback_adapter.py
 from qtpy.QtCore import QObject, Signal, Slot
 
 class QCCallbackToSignal(QObject):

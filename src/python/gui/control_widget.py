@@ -1,3 +1,4 @@
+# src/python/gui/control_widget.py
 from qtpy.QtWidgets import (
     QWidget,
     QGridLayout,
@@ -5,14 +6,13 @@ from qtpy.QtWidgets import (
     QCheckBox,
     QSizePolicy,
 )
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal
 from qtpy.QtGui import QFont
 
 from .managers.fit_width_label_manager import FitWidthLabelManager
 from .managers.fit_width_button_manager import FitWidthButtonManager
 from .fit_width_label import FitWidthLabel
 from .fit_width_button import FitWidthButton
-
 
 class ControlWidget(QWidget):
     """
@@ -22,6 +22,8 @@ class ControlWidget(QWidget):
     FitWidthButtonManager for button text alignment,
     and UniformSpinBoxManager for consistent spin box column widths.
     """
+
+    signal_add_10_nodes = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -38,11 +40,11 @@ class ControlWidget(QWidget):
 
         self._create_ui()
 
-
-
     def _create_ui(self):
         # --- Buttons ---
         button_add_10         = FitWidthButton("Add 10 nodes")
+        button_add_10.clicked.connect(self.signal_add_10_nodes.emit)
+
         button_add_100        = FitWidthButton("Add 100 nodes")
         button_del_10         = FitWidthButton("Del 10 nodes")
         button_reset_delay    = FitWidthButton("Reset nodes delay")
@@ -87,7 +89,6 @@ class ControlWidget(QWidget):
         spin_node_attack.setRange(1, 1023)
 
         # --- Manager registration ---
-
         for label, col in [
             (label_swarms, 1), (label_set_nodes, 3), (label_min_hops, 1),
             (label_max_hops, 3), (label_default_delay, 1),

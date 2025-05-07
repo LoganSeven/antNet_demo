@@ -1,38 +1,35 @@
+//src/c/random_algo.c
 /*
  * random_algo.c
  * Implements a random path finder that uses the node/edge data from AntNetContext.
- * This does not guarantee an optimal route, only a feasible route within hop constraints.
+ * This version picks a path length in [min_hops..max_hops], randomly chooses that many
+ * distinct nodes (excluding start and end), builds a path start -> chosen_nodes -> end,
+ * sums latency, and updates ctx->random_best_* fields if a better solution is found.
  */
 
  #include <stdio.h>
  #include <stdlib.h>
  #include <time.h>
+ #include "error_codes.h"
  #include "random_algo.h"
  
  /*
-  * Helper: returns a list of neighbor node_ids for a given node_id,
-  * scanning the ctx->edges array for all edges that match.
-  * The out_neighbors array must be allocated by the caller; neighbor_count is set on return.
+  * The commented code below is kept for future usage; it is not removed.
+  * #if 0
+  *  Old random-walk approach
+  *  ...
+  * #endif
   */
- static void get_neighbors(const AntNetContext* ctx, int node_id, int* out_neighbors, int* neighbor_count, int max_possible)
- {
-     int count = 0;
-     for (int i = 0; i < ctx->num_edges; i++) {
-         if (ctx->edges[i].from_id == node_id) {
-             // Potential neighbor
-             if (count < max_possible) {
-                 out_neighbors[count] = ctx->edges[i].to_id;
-                 count++;
-             }
-         }
-     }
-     *neighbor_count = count;
- }
  
  /*
   * random_search_path: main function
-  * Note: This implementation tries a fixed number of random attempts
-  * to find a path. If it fails, returns negative.
+  * - picks a random count in [ctx->min_hops..ctx->max_hops]
+  * - selects distinct random nodes from the range [2..ctx->num_nodes-1] if possible
+  * - forms a path (start_id + chosen + end_id)
+  * - sums total latency from each node in that path
+  * - if it improves the stored best path in ctx->random_best_*, updates it
+  * - copies the best path so far into out_nodes, out_path_len, out_total_latency
+  * Returns 0 on success, negative error codes otherwise
   */
  int random_search_path(
      AntNetContext* ctx,
@@ -45,110 +42,146 @@
  )
  {
      if (!ctx || !out_nodes || !out_path_len || !out_total_latency) {
-         return -1;
+         return ERR_INVALID_ARGS;
+     }
+     if (ctx->num_nodes <= 0 || ctx->nodes == NULL) {
+         return ERR_NO_TOPOLOGY;
+     }
+     // Acquire lock for thread safety
+ #ifndef _WIN32
+     pthread_mutex_lock(&ctx->lock);
+ #endif
+ 
+     // Ensure the result array is large enough for worst case (max_hops + 2)
+     // For safety, set an upper bound
+     int needed_capacity = ctx->max_hops + 2; 
+     if (needed_capacity > max_size || needed_capacity > 1024) {
+ #ifndef _WIN32
+         pthread_mutex_unlock(&ctx->lock);
+ #endif
+         return ERR_ARRAY_TOO_SMALL;
      }
  
-     // A simple random-based approach with a limited number of tries
-     // to avoid infinite loops in large graphs.
-     const int MAX_ATTEMPTS = 200;
+     // Random seed once per call
+     srand((unsigned int)time(NULL));
  
-     srand((unsigned int)time(NULL));  // randomize seed once per call
- 
-     // If there is no valid node array or edge array, return
-     if (ctx->num_nodes <= 0 || ctx->num_edges <= 0) {
-         return -2;
+     // 1) pick random number of selected hops
+     int range_size = ctx->max_hops - ctx->min_hops + 1;
+     if (range_size <= 0) {
+ #ifndef _WIN32
+         pthread_mutex_unlock(&ctx->lock);
+ #endif
+         return ERR_INVALID_ARGS;
      }
+     int nb_selected_nodes = ctx->min_hops + (rand() % range_size);
  
-     int best_path_len = 0;
-     int best_latency = 0;
-     int found_path = 0;
- 
-     // Attempt multiple random walks
-     for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-         int path[1024]; // local scratch
-         int visited[1024] = {0};
-         int path_len = 0;
-         int total_latency = 0;
- 
-         if (max_size > (int)(sizeof(path)/sizeof(path[0]))) {
-             // limit max_size if user gave something huge
-             max_size = (int)(sizeof(path)/sizeof(path[0]));
-         }
- 
-         // Start at start_id
-         path[0] = start_id;
-         visited[start_id] = 1;
-         total_latency += ctx->nodes[0].delay_ms; // This is simplistic, see below for indexing
-         path_len = 1;
- 
-         int current_id = start_id;
-         while (current_id != end_id) {
-             if (path_len >= ctx->max_hops) {
-                 // Exceeded max hops
-                 break;
-             }
-             // Gather neighbors
-             int neighbors[1024];
-             int neighbor_count = 0;
-             get_neighbors(ctx, current_id, neighbors, &neighbor_count, 1024);
- 
-             // Filter out visited
-             int unvisited[1024];
-             int uv_count = 0;
-             for (int i = 0; i < neighbor_count; i++) {
-                 int nid = neighbors[i];
-                 // Because node_id could be arbitrary, map them into the NodeData array
-                 // This approach assumes node_id < ctx->num_nodes, or a direct match
-                 // If real IDs are scattered, a map might be needed.
-                 // For simplicity, assume node_id is in [0..num_nodes-1].
-                 if (nid >= 0 && nid < ctx->num_nodes && visited[nid] == 0) {
-                     unvisited[uv_count] = nid;
-                     uv_count++;
-                 }
-             }
- 
-             if (uv_count == 0) {
-                 // No unvisited neighbors
-                 break;
-             }
- 
-             // Choose randomly among unvisited
-             int next_index = rand() % uv_count;
-             int next_id = unvisited[next_index];
-             path[path_len] = next_id;
-             visited[next_id] = 1;
-             path_len++;
- 
-             // Add latency (assuming node_id matches index)
-             total_latency += ctx->nodes[next_id].delay_ms;
- 
-             current_id = next_id;
- 
-             // If we reached end_id, check if path_len >= min_hops
-             if (current_id == end_id && path_len >= ctx->min_hops) {
-                 found_path = 1;
-                 if (best_path_len == 0 || total_latency < best_latency) {
-                     // Found a better random path
-                     best_path_len = path_len;
-                     best_latency = total_latency;
-                     // Copy to user array
-                     if (best_path_len <= max_size) {
-                         for (int k = 0; k < best_path_len; k++) {
-                             out_nodes[k] = path[k];
-                         }
-                         *out_path_len = best_path_len;
-                         *out_total_latency = best_latency;
-                     }
-                 }
-                 break;
-             }
+     // 2) build a list of candidate node IDs (exclude start_id=0, end_id=1)
+     //    then shuffle and pick nb_selected_nodes
+     int candidate_count = ctx->num_nodes - 2; // excluding 0 and 1
+     if (candidate_count < 0) {
+ #ifndef _WIN32
+         pthread_mutex_unlock(&ctx->lock);
+ #endif
+         return ERR_NO_PATH_FOUND;
+     }
+     // gather candidate node IDs
+     int* candidates = (int*)malloc(candidate_count * sizeof(int));
+     if (!candidates) {
+ #ifndef _WIN32
+         pthread_mutex_unlock(&ctx->lock);
+ #endif
+         return ERR_MEMORY_ALLOCATION;
+     }
+     int idx = 0;
+     for (int i = 0; i < ctx->num_nodes; i++) {
+         if (i != start_id && i != end_id) {
+             candidates[idx++] = i;
          }
      }
- 
-     if (found_path && best_path_len <= max_size) {
-         return 0; // success
+     // if nb_selected_nodes > candidate_count, no feasible path
+     if (nb_selected_nodes > candidate_count) {
+         free(candidates);
+ #ifndef _WIN32
+         pthread_mutex_unlock(&ctx->lock);
+ #endif
+         return ERR_NO_PATH_FOUND;
      }
  
-     // Could not find a path meeting constraints
-     return -3;
+     // Fisher-Yates shuffle
+     for (int i = candidate_count - 1; i > 0; i--) {
+         int j = rand() % (i + 1);
+         int tmp = candidates[i];
+         candidates[i] = candidates[j];
+         candidates[j] = tmp;
+     }
+ 
+     // pick the first nb_selected_nodes from shuffled array
+     // and optionally shuffle them again if a random order is desired in the path
+     // for simplicity, just keep them in the order we got from the shuffle
+     int new_path_length = nb_selected_nodes + 2; // including start, end
+     int* new_path = (int*)malloc(new_path_length * sizeof(int));
+     if (!new_path) {
+         free(candidates);
+ #ifndef _WIN32
+         pthread_mutex_unlock(&ctx->lock);
+ #endif
+         return ERR_MEMORY_ALLOCATION;
+     }
+ 
+     new_path[0] = start_id;
+     for (int k = 0; k < nb_selected_nodes; k++) {
+         new_path[k + 1] = candidates[k];
+     }
+     new_path[new_path_length - 1] = end_id;
+ 
+     // 3) compute total latency
+     // The array ctx->nodes[] is assumed indexed by node_id
+     int new_total_latency = 0;
+     for (int k = 0; k < new_path_length; k++) {
+         int node_id = new_path[k];
+         if (node_id < 0 || node_id >= ctx->num_nodes) {
+             // invalid node
+             free(new_path);
+             free(candidates);
+ #ifndef _WIN32
+             pthread_mutex_unlock(&ctx->lock);
+ #endif
+             return ERR_NO_PATH_FOUND;
+         }
+         new_total_latency += ctx->nodes[node_id].delay_ms;
+     }
+ 
+     // 4) if it is better or if no best path is stored yet, update ctx->random_best_*
+     // The default for random_best_length is 0 => no path set yet
+     if (ctx->random_best_length == 0 || new_total_latency < ctx->random_best_latency) {
+         ctx->random_best_length = new_path_length;
+         ctx->random_best_latency = new_total_latency;
+         for (int p = 0; p < new_path_length; p++) {
+             ctx->random_best_nodes[p] = new_path[p];
+         }
+     }
+ 
+     // free temporary arrays
+     free(new_path);
+     free(candidates);
+ 
+     // Copy the best path so far to out_* fields
+     if (ctx->random_best_length > max_size) {
+ #ifndef _WIN32
+         pthread_mutex_unlock(&ctx->lock);
+ #endif
+         return ERR_ARRAY_TOO_SMALL;
+     }
+     for (int p = 0; p < ctx->random_best_length; p++) {
+         out_nodes[p] = ctx->random_best_nodes[p];
+     }
+     *out_path_len = ctx->random_best_length;
+     *out_total_latency = ctx->random_best_latency;
+ 
+ #ifndef _WIN32
+     pthread_mutex_unlock(&ctx->lock);
+ #endif
+ 
+     return ERR_SUCCESS;
  }
+ 
