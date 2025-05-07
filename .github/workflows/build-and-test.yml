@@ -2,9 +2,10 @@ name: Build and Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, algorithm_integration_branch ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, algorithm_integration_branch ]
+
 
 jobs:
   build-and-test:
