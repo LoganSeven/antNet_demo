@@ -48,5 +48,5 @@ jobs:
         run: |
           python3 -m pytest tests/
 
-      - name: "✅ Done"
+      - name: "Done"
         run: echo "Build and tests completed successfully."
