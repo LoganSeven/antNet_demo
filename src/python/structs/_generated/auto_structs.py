@@ -15,3 +15,11 @@ class AppConfig(TypedDict):
     simulate_ddos: bool
     show_random_performance: bool
     show_brute_performance: bool
+
+class BruteForceState(TypedDict):
+    candidate_nodes: int
+    candidate_count: int
+    current_L: int
+    permutation: int
+    at_first_permutation: int
+    done: int

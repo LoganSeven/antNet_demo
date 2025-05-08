@@ -23,7 +23,7 @@ python3 src/python/tools/errors_const_c2python.py \
 echo "[3/6] Generating Python TypedDicts from C headers..."
 mkdir -p src/python/structs/_generated
 python3 src/python/tools/generate_structs.py \
-    --headers include/antnet_network_types.h include/antnet_config_types.h \
+    --headers include/antnet_network_types.h include/antnet_config_types.h include/antnet_brute_force_types.h \
     --output src/python/structs/_generated/auto_structs.py
 
 # -----------------------------------------------------------------------------

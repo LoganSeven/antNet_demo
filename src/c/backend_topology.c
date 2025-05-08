@@ -1,5 +1,4 @@
 // src/c/backend_topology.c
-// src/c/backend_topology.c
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -7,6 +6,7 @@
 #include "../../include/backend.h"
 #include "../../include/backend_topology.h"
 #include "../../include/error_codes.h"
+#include "../../include/cpu_brute_force.h" /* added for brute_force_reset_state */
 
 /*
  * get_context_by_id: forward declaration from backend.c
@@ -102,6 +102,12 @@ int antnet_update_topology(
 
     printf("[antnet_update_topology] Updated with %d nodes and %d edges.\n",
            ctx->num_nodes, ctx->num_edges);
+
+    /*
+     * IMPORTANT: Reset brute force solver iteration so it enumerates paths again.
+     * This preserves the best path found so far but restarts permutations.
+     */
+    brute_force_reset_state(ctx);
 
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);

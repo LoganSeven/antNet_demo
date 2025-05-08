@@ -1,10 +1,12 @@
 // include/backend.h
+// include/backend.h
 #ifndef BACKEND_H
 #define BACKEND_H
 
 #include "antnet_network_types.h"  /* for NodeData, EdgeData (if needed) */
 #include "antnet_path_types.h"     /* for AntNetPathInfo */
 #include "antnet_config_types.h"   /* for AppConfig */
+#include "antnet_brute_force_types.h"  /* new: for BruteForceState */
 #include "error_codes.h"
 
 #ifdef __cplusplus
@@ -53,6 +55,19 @@ typedef struct AntNetContext
      * We only actively use min_hops, max_hops in the code for now.
      */
     AppConfig config;
+
+    /*
+     * brute solver best path data
+     * The brute force solver enumerates possible paths and updates this if a better solution is found
+     */
+    int brute_best_nodes[1024];
+    int brute_best_length;
+    int brute_best_latency;
+
+    /*
+     * Internal iteration state for brute force solver
+     */
+    BruteForceState brute_state;
 
 } AntNetContext;
 

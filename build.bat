@@ -25,7 +25,7 @@ IF NOT EXIST src\python\structs\_generated (
     mkdir src\python\structs\_generated
 )
 python src\python\tools\generate_structs.py ^
-    --headers include\antnet_network_types.h include\antnet_config_types.h ^
+    --headers include\antnet_network_types.h include\antnet_config_types.h include\antnet_brute_force_types.h ^
     --output src\python\structs\_generated\auto_structs.py
 
 REM -----------------------------------------------------------------------------

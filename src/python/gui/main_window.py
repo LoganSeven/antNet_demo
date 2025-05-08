@@ -178,6 +178,7 @@ class MainWindow(QMainWindow):
                 data = path_info[algo_key]
                 nodes = data.get("nodes", [])
                 if nodes:
+                    print(f"[DEBUG] {algo_label} path: {nodes}") 
                     latency = data.get("total_latency", 0)
                     previous_latency = self.last_logged_latencies[algo_key]
                     if previous_latency is None or previous_latency != latency:
@@ -185,6 +186,7 @@ class MainWindow(QMainWindow):
                         self.last_logged_latencies[algo_key] = latency
 
         self.graph_canvas.scene.draw_multiple_paths(path_info)
+
 
     def on_iteration_done(self):
         self.iteration_count += 1

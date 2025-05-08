@@ -2,25 +2,20 @@
 #ifndef CPU_BRUTE_FORCE_H
 #define CPU_BRUTE_FORCE_H
 
-/*
- * cpu_brute_force.h
- * Provides a brute force algorithm to find the path with the lowest total latency
- * from start_id to end_id, constrained by min_hops and max_hops.
- */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "backend.h"
+#include "backend.h"  /* for AntNetContext */
 
 /*
- * brute_force_path: enumerates all possible paths (within min_hops..max_hops)
- * from start_id to end_id, selects the minimum-latency path, and copies it
- * to out_nodes. Sets *out_path_len and *out_total_latency. Returns 0 on success,
- * negative if no path is found or an error occurs.
+ * brute_force_search_step: enumerates exactly one new path in ascending order
+ * of path length L in [ctx->min_hops..ctx->max_hops], considering permutations
+ * of candidate internal nodes. If a path is found, it updates ctx->brute_best_*
+ * if better. If no path remains, the solver is considered done.
+ *
+ * The function then copies the best path so far (if any) into:
+ * out_nodes, out_path_len, out_total_latency.
+ *
+ * Returns 0 on success, negative on error.
  */
-int brute_force_path(
+int brute_force_search_step(
     AntNetContext* ctx,
     int start_id,
     int end_id,
@@ -30,8 +25,11 @@ int brute_force_path(
     int* out_total_latency
 );
 
-#ifdef __cplusplus
-}
-#endif
+/*
+ * brute_force_reset_state: restarts the enumeration from scratch (min_hops),
+ * but preserves ctx->brute_best_length and ctx->brute_best_latency.
+ * This is used if the topology (nodes/latencies) changes.
+ */
+void brute_force_reset_state(AntNetContext* ctx);
 
-#endif // CPU_BRUTE_FORCE_H
+#endif /* CPU_BRUTE_FORCE_H */

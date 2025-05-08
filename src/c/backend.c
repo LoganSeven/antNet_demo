@@ -4,7 +4,7 @@
 #include "../../include/error_codes.h"
 #include "../../include/cpu_ACOv1.h"
 #include "../../include/random_algo.h"
-#include "../../include/cpu_brute_force.h"
+#include "../../include/cpu_brute_force.h" /* new: for brute_force_search_step */
 #include "../../include/config_manager.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,6 +93,13 @@ int antnet_initialize(int node_count, int min_hops, int max_hops)
             ctx->config.min_hops     = min_hops;
             ctx->config.max_hops     = max_hops;
             /* (Other config fields remain at defaults for now) */
+
+            /* Initialize brute solver fields */
+            ctx->brute_best_length = 0;
+            ctx->brute_best_latency = 0;
+            memset(ctx->brute_best_nodes, 0, sizeof(ctx->brute_best_nodes));
+            /* brute_force_reset_state will be called when topology is set or on demand */
+            memset(&ctx->brute_state, 0, sizeof(ctx->brute_state));
 
 #ifndef _WIN32
             /* Initialize mutex for this context */
@@ -261,8 +268,7 @@ int antnet_shutdown(int context_id)
 
 /*
  * antnet_run_all_solvers: runs the aco, random, and brute force solvers in sequence, storing each result
- * in caller-provided buffers. This version calls only the random solver at runtime,
- * while the other calls are commented out for future usage.
+ * in caller-provided buffers.
  * Returns 0 on success, negative on error.
  */
 int antnet_run_all_solvers(
@@ -312,26 +318,32 @@ int antnet_run_all_solvers(
     /*
      * Call the random solver once; it attempts a new random path and returns the best so far.
      */
-    int rc = random_search_path(
-        ctx, 0, 1,
-        out_nodes_random, max_size_random,
-        out_len_random, out_latency_random
-    );
-    if (rc != ERR_SUCCESS) {
-        return rc;
+    {
+        int rc = random_search_path(
+            ctx, 0, 1,
+            out_nodes_random, max_size_random,
+            out_len_random, out_latency_random
+        );
+        if (rc != ERR_SUCCESS) {
+            return rc;
+        }
     }
 
-#ifndef _WIN32
-    pthread_mutex_lock(&ctx->lock);
-#endif
-
-    /* For demonstration, skip the brute force solver and store empty results: */
-    *out_len_brute = 0;
-    *out_latency_brute = 0;
-
-#ifndef _WIN32
-    pthread_mutex_unlock(&ctx->lock);
-#endif
+    /*
+     * Call the brute force solver once, enumerating exactly one path in the search.
+     * This updates the best brute path if a better one is found.
+     */
+    {
+        int rc = brute_force_search_step(
+            ctx, 0, 1,
+            out_nodes_brute, max_size_brute,
+            out_len_brute, out_latency_brute
+        );
+        if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND) {
+            /* ignore no-path if e.g. the topology is empty; otherwise return error */
+            return rc;
+        }
+    }
 
     return ERR_SUCCESS;
 }
