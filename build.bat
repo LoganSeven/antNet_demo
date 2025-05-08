@@ -6,12 +6,12 @@ REM Resolve root directory
 cd /d "%~dp0"
 
 REM -----------------------------------------------------------------------------
-echo [1/5] Building C backend with CMake...
+echo [1/6] Building C backend with CMake...
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build --config Debug
 
 REM -----------------------------------------------------------------------------
-echo [2/5] Generating Python error constants...
+echo [2/6] Generating Python error constants...
 IF NOT EXIST src\python\consts\_generated (
     mkdir src\python\consts\_generated
 )
@@ -20,21 +20,30 @@ python src\python\tools\errors_const_c2python.py ^
     src\python\consts\_generated
 
 REM -----------------------------------------------------------------------------
-echo [3/5] Building Python CFFI bindings...
+echo [3/6] Generating Python TypedDicts from C headers...
+IF NOT EXIST src\python\structs\_generated (
+    mkdir src\python\structs\_generated
+)
+python src\python\tools\generate_structs.py ^
+    --headers include\antnet_network_types.h include\antnet_config_types.h ^
+    --output src\python\structs\_generated\auto_structs.py
+
+REM -----------------------------------------------------------------------------
+echo [4/6] Building Python CFFI bindings...
 IF EXIST "venv\Scripts\activate.bat" (
     call venv\Scripts\activate.bat
 )
 python src\python\ffi\ffi_build.py
 
 REM -----------------------------------------------------------------------------
-echo [4/5] Copying compiled module...
+echo [5/6] Copying compiled module...
 IF NOT EXIST "src\python\ffi" (
     mkdir src\python\ffi
 )
 copy /Y build\python\backend_cffi*.pyd src\python\ffi\ > NUL
 
 REM -----------------------------------------------------------------------------
-echo [5/5] Running tests...
+echo [6/6] Running tests...
 python -m pytest -s tests\
 IF ERRORLEVEL 1 (
     echo ❌ Tests failed!

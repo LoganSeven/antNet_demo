@@ -5,9 +5,48 @@ from cffi import FFI
 ffi = FFI()
 
 # ---------- C header interface ----------
-# Matches the current backend.h and backend_topology.h:
+# The main approach remains to replicate (or copy) the relevant struct signatures
+# for NodeData, EdgeData, etc. into ffi.cdef. Alternatively, one can embed them directly
+# but cffi does not parse #include lines from within cdef() blocks, so the textual definition
+# is required here for complete FFI bounding. (All fields must match the new .h definitions.)
 ffi.cdef(
     """
+    // from antnet_network_types.h
+    typedef struct {
+        int    node_id;
+        int    delay_ms;
+        float  x;
+        float  y;
+        int    radius;
+    } NodeData;
+
+    typedef struct {
+        int from_id;
+        int to_id;
+    } EdgeData;
+
+    // from antnet_path_types.h
+    typedef struct {
+        int* nodes;
+        int  node_count;
+        int  total_latency;
+    } AntNetPathInfo;
+
+    // from antnet_config_types.h
+    typedef struct {
+        int  nb_swarms;
+        int  set_nb_nodes;
+        int  min_hops;
+        int  max_hops;
+        int  default_delay;
+        int  death_delay;
+        int  under_attack_id;
+        _Bool attack_started;
+        _Bool simulate_ddos;
+        _Bool show_random_performance;
+        _Bool show_brute_performance;
+    } AppConfig;
+
     // from backend.h
     int antnet_initialize(int node_count, int min_hops, int max_hops);
     int antnet_run_iteration(int context_id);
@@ -19,28 +58,15 @@ ffi.cdef(
         int* out_path_len,
         int* out_total_latency
     );
-
     int antnet_run_all_solvers(
         int context_id,
         int* out_nodes_aco,    int max_size_aco,    int* out_len_aco,    int* out_latency_aco,
         int* out_nodes_random, int max_size_random, int* out_len_random, int* out_latency_random,
         int* out_nodes_brute,  int max_size_brute,  int* out_len_brute,  int* out_latency_brute
     );
-
-    // new config-based init
     int antnet_init_from_config(const char* config_path);
 
     // from backend_topology.h
-    typedef struct {
-        int node_id;
-        int delay_ms;
-    } NodeData;
-
-    typedef struct {
-        int from_id;
-        int to_id;
-    } EdgeData;
-
     int antnet_update_topology(
         int context_id,
         const NodeData* nodes,
@@ -52,23 +78,25 @@ ffi.cdef(
 )
 
 # ---------- Build instructions ----------
-this_dir     = os.path.dirname(__file__)
-src_c_dir    = os.path.abspath(os.path.join(this_dir, "../../c"))
-include_dir  = os.path.abspath(os.path.join(this_dir, "../../../include"))
+this_dir = os.path.dirname(__file__)
+src_c_dir = os.path.abspath(os.path.join(this_dir, "../../c"))
+include_dir = os.path.abspath(os.path.join(this_dir, "../../../include"))
 
-# Paths to all .c files that must be compiled
-lib_source       = os.path.join(src_c_dir, "backend.c")
-topo_source      = os.path.join(src_c_dir, "backend_topology.c")
-random_source    = os.path.join(src_c_dir, "random_algo.c")
-brute_source     = os.path.join(src_c_dir, "cpu_brute_force.c")
-aco_source       = os.path.join(src_c_dir, "cpu_ACOv1.c")
-config_mgr       = os.path.join(src_c_dir, "config_manager.c")
-hopmap_source    = os.path.join(src_c_dir, "hop_map_manager.c")
-ini_c            = os.path.join(this_dir, "../../../third_party/ini.c")  # If needed, but typically only config_manager needs it.
+lib_source    = os.path.join(src_c_dir, "backend.c")
+topo_source   = os.path.join(src_c_dir, "backend_topology.c")
+random_source = os.path.join(src_c_dir, "random_algo.c")
+brute_source  = os.path.join(src_c_dir, "cpu_brute_force.c")
+aco_source    = os.path.join(src_c_dir, "cpu_ACOv1.c")
+config_mgr    = os.path.join(src_c_dir, "config_manager.c")
+hopmap_source = os.path.join(src_c_dir, "hop_map_manager.c")
+ini_c         = os.path.join(this_dir, "../../../third_party/ini.c")
 
 ffi.set_source(
-    "backend_cffi",              # name of the generated module (.so/.pyd)
-    '#include "backend.h"',      # top-level header
+    "backend_cffi",              # name of the generated Python extension
+    '#include "backend.h"\n'
+    '#include "backend_topology.h"\n'
+    '#include "config_manager.h"\n'
+    '#include "hop_map_manager.h"\n',
     sources=[
         lib_source,
         topo_source,
@@ -77,10 +105,12 @@ ffi.set_source(
         aco_source,
         config_mgr,
         hopmap_source,
-        # We compile ini.c if it is not already compiled into a separate library.
         ini_c
     ],
-    include_dirs=[include_dir, os.path.join(this_dir, "../../../third_party")],  # directories for #include
+    include_dirs=[
+        include_dir,
+        os.path.join(this_dir, "../../../third_party")
+    ],
 )
 
 if __name__ == "__main__":

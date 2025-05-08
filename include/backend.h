@@ -2,8 +2,9 @@
 #ifndef BACKEND_H
 #define BACKEND_H
 
-#include "backend_topology.h"
-#include "config_manager.h"  /* For AppConfig */
+#include "antnet_network_types.h"  /* for NodeData, EdgeData (if needed) */
+#include "antnet_path_types.h"     /* for AntNetPathInfo */
+#include "antnet_config_types.h"   /* for AppConfig */
 #include "error_codes.h"
 
 #ifdef __cplusplus
@@ -19,15 +20,6 @@ extern "C" {
 #endif
 
 /*
- * AntNetPathInfo: not used heavily in this demo, just an example struct to store path data.
- */
-typedef struct {
-    int* nodes;
-    int  node_count;
-    int  total_latency;
-} AntNetPathInfo;
-
-/*
  * AntNetContext: stores the ACA context, including nodes, edges, and algorithm parameters.
  */
 typedef struct AntNetContext
@@ -38,17 +30,15 @@ typedef struct AntNetContext
 
     /* Pointers to dynamic topology data */
     NodeData* nodes;
-    int num_nodes;
+    int       num_nodes;
     EdgeData* edges;
-    int num_edges;
-    int iteration;
+    int       num_edges;
+    int       iteration;
 
     /* Mutex for thread safety */
 #ifndef _WIN32
     pthread_mutex_t lock;
 #endif
-
-    /* ... (other fields related to ACA, threads, etc.) */
 
     /*
      * random solver best path data

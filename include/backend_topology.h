@@ -6,21 +6,7 @@
 extern "C" {
 #endif
 
-/*
- * NodeData: holds node ID and node-specific delay (in milliseconds).
- */
-typedef struct NodeData {
-    int node_id;
-    int delay_ms;
-} NodeData;
-
-/*
- * EdgeData: holds directed connection from one node to another.
- */
-typedef struct EdgeData {
-    int from_id;
-    int to_id;
-} EdgeData;
+#include "antnet_network_types.h"  /* NodeData, EdgeData */
 
 /*
  * antnet_update_topology: updates the internal graph data within the context.
