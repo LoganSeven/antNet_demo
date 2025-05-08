@@ -3,7 +3,7 @@
 #define BACKEND_H
 
 #include "backend_topology.h"
-#include "config_manager.h"  // For AppConfig
+#include "config_manager.h"  /* For AppConfig */
 #include "error_codes.h"
 
 #ifdef __cplusplus
@@ -18,7 +18,7 @@ extern "C" {
 #include <pthread.h>
 #endif
 
-/**
+/*
  * AntNetPathInfo: not used heavily in this demo, just an example struct to store path data.
  */
 typedef struct {
@@ -27,8 +27,7 @@ typedef struct {
     int  total_latency;
 } AntNetPathInfo;
 
-
-/**
+/*
  * AntNetContext: stores the ACA context, including nodes, edges, and algorithm parameters.
  */
 typedef struct AntNetContext
@@ -37,19 +36,19 @@ typedef struct AntNetContext
     int min_hops;
     int max_hops;
 
-    // Pointers to dynamic topology data
+    /* Pointers to dynamic topology data */
     NodeData* nodes;
     int num_nodes;
     EdgeData* edges;
     int num_edges;
     int iteration;
 
-    // Mutex for thread safety
+    /* Mutex for thread safety */
 #ifndef _WIN32
     pthread_mutex_t lock;
 #endif
 
-    // ... (other fields related to ACA, threads, etc.)
+    /* ... (other fields related to ACA, threads, etc.) */
 
     /*
      * random solver best path data
@@ -67,24 +66,25 @@ typedef struct AntNetContext
 
 } AntNetContext;
 
-/**
+/*
  * antnet_initialize: creates a new AntNetContext, returns its context_id (>= 0 on success).
+ * Returns ERR_NO_FREE_SLOT if no free slot is available.
  */
 int antnet_initialize(int node_count, int min_hops, int max_hops);
 
-/**
+/*
  * antnet_run_iteration: executes one iteration of the ACO algorithm for context_id.
  * Returns 0 on success, negative on error.
  */
 int antnet_run_iteration(int context_id);
 
-/**
+/*
  * antnet_shutdown: frees resources used by context_id.
  * Returns 0 on success, negative on error.
  */
 int antnet_shutdown(int context_id);
 
-/**
+/*
  * antnet_get_best_path: retrieves the best path found so far for context_id.
  * out_nodes: array to store node indices in path
  * max_size: capacity of out_nodes
@@ -100,14 +100,11 @@ int antnet_get_best_path(
     int* out_total_latency
 );
 
-/*
- * antnet_update_topology: declared in backend_topology.h
- * This call replaces the existing node/edge data in the context.
- */
+/* antnet_update_topology: declared in backend_topology.h */
 
-/**
+/*
  * antnet_run_all_solvers: runs the aco, random, and brute force solvers in sequence,
- *                         storing each path in separate arrays.
+ * storing each path in separate arrays.
  * out_nodes_aco:    array to store the aco solver path
  * max_size_aco:     capacity of out_nodes_aco
  * out_len_aco:      actual path length of aco solver
@@ -127,26 +124,26 @@ int antnet_get_best_path(
  */
 int antnet_run_all_solvers(
     int context_id,
-    // aco
+    /* aco */
     int* out_nodes_aco,
     int max_size_aco,
     int* out_len_aco,
     int* out_latency_aco,
 
-    // random
+    /* random */
     int* out_nodes_random,
     int max_size_random,
     int* out_len_random,
     int* out_latency_random,
 
-    // brute
+    /* brute */
     int* out_nodes_brute,
     int max_size_brute,
     int* out_len_brute,
     int* out_latency_brute
 );
 
-/**
+/*
  * antnet_init_from_config: loads settings.ini from disk, creates a new context,
  * and sets min_hops, max_hops, node_count, etc. from the loaded config.
  * Returns context_id >= 0 on success, negative on error.
@@ -157,4 +154,4 @@ int antnet_init_from_config(const char* config_path);
 }
 #endif
 
-#endif // BACKEND_H
+#endif /* BACKEND_H */

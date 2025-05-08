@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-/**
+/*
  * NodeData: holds node ID and node-specific delay (in milliseconds).
  */
 typedef struct NodeData {
@@ -14,7 +14,7 @@ typedef struct NodeData {
     int delay_ms;
 } NodeData;
 
-/**
+/*
  * EdgeData: holds directed connection from one node to another.
  */
 typedef struct EdgeData {
@@ -22,11 +22,12 @@ typedef struct EdgeData {
     int to_id;
 } EdgeData;
 
-/**
+/*
  * antnet_update_topology: updates the internal graph data within the context.
  * context_id: context handle (index).
  * nodes: array of NodeData, with length num_nodes.
  * edges: array of EdgeData, with length num_edges.
+ * Returns 0 on success, negative on error.
  */
 int antnet_update_topology(
     int context_id,
@@ -40,4 +41,4 @@ int antnet_update_topology(
 }
 #endif
 
-#endif // BACKEND_TOPOLOGY_H
+#endif /* BACKEND_TOPOLOGY_H */

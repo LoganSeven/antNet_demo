@@ -3,15 +3,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#ifndef _WIN32
 #include <pthread.h>
+#endif
 
-#include "../../third_party/ini.h"      // Unmodified inih header
+#include "../../third_party/ini.h"      /* Unmodified inih header */
 #include "../../include/config_manager.h"
 
 /*
  * Internal mutex to ensure thread safety when loading or saving config files.
  */
+#ifndef _WIN32
 static pthread_mutex_t g_config_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 /*
  * config_set_defaults: sets fixed default values in the cfg structure.
@@ -41,7 +45,7 @@ static bool parse_bool_value(const char* str)
 {
     if (!str) return false;
 
-    // Lowercase copy for easy comparison
+    /* Lowercase copy for easy comparison */
     char buf[16];
     memset(buf, 0, sizeof(buf));
     int i = 0;
@@ -71,7 +75,7 @@ static int config_ini_handler(void* user, const char* section,
                               const char* name, const char* value)
 {
     if (!user || !section || !name || !value) {
-        return 0; // invalid pointer => parse error
+        return 0; /* invalid pointer => parse error */
     }
 
     AppConfig* cfg = (AppConfig*)user;
@@ -97,7 +101,7 @@ static int config_ini_handler(void* user, const char* section,
         else if (strcmp(name, "show_brute_performance") == 0) { cfg->show_brute_performance = parse_bool_value(value); }
     }
 
-    return 1; // continue parsing
+    return 1; /* continue parsing */
 }
 
 /*
@@ -112,7 +116,9 @@ bool config_load(AppConfig* cfg, const char* filepath)
         return false;
     }
 
+#ifndef _WIN32
     pthread_mutex_lock(&g_config_mutex);
+#endif
 
     /* parse ini */
     int parse_result = ini_parse(filepath, config_ini_handler, cfg);
@@ -122,11 +128,15 @@ bool config_load(AppConfig* cfg, const char* filepath)
          * parse_result = -1 => file open error
          * parse_result = -2 => memory error
          */
+#ifndef _WIN32
         pthread_mutex_unlock(&g_config_mutex);
+#endif
         return false;
     }
 
+#ifndef _WIN32
     pthread_mutex_unlock(&g_config_mutex);
+#endif
     return true;
 }
 
@@ -141,11 +151,15 @@ bool config_save(const AppConfig* cfg, const char* filepath)
         return false;
     }
 
+#ifndef _WIN32
     pthread_mutex_lock(&g_config_mutex);
+#endif
 
     FILE* fp = fopen(filepath, "w");
     if (!fp) {
+#ifndef _WIN32
         pthread_mutex_unlock(&g_config_mutex);
+#endif
         return false;
     }
 
@@ -175,6 +189,8 @@ bool config_save(const AppConfig* cfg, const char* filepath)
 
     fclose(fp);
 
+#ifndef _WIN32
     pthread_mutex_unlock(&g_config_mutex);
+#endif
     return true;
 }

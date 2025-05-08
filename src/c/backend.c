@@ -10,12 +10,25 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Maximum number of parallel contexts
+#ifndef _WIN32
+#include <pthread.h>
+#endif
+
+/*
+ * Maximum number of parallel contexts
+ */
 #define MAX_CONTEXTS 16
 
-// Storage for all contexts
+/*
+ * Storage for all contexts
+ */
 static AntNetContext g_contexts[MAX_CONTEXTS];
-static int g_context_in_use[MAX_CONTEXTS] = {0};  // 0 = free, 1 = in use
+static int g_context_in_use[MAX_CONTEXTS] = {0}; /* 0 = free, 1 = in use */
+
+/* security: global mutex for context usage array to avoid race conditions */
+#ifndef _WIN32
+static pthread_mutex_t g_contexts_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 /*
  * Helper function: retrieve pointer to a valid context by ID,
@@ -26,7 +39,16 @@ AntNetContext* get_context_by_id(int context_id)
     if (context_id < 0 || context_id >= MAX_CONTEXTS) {
         return NULL;
     }
-    if (!g_context_in_use[context_id]) {
+
+#ifndef _WIN32
+    /* security: lock g_contexts array usage when checking usage flags */
+    pthread_mutex_lock(&g_contexts_lock);
+#endif
+    int in_use = g_context_in_use[context_id];
+#ifndef _WIN32
+    pthread_mutex_unlock(&g_contexts_lock);
+#endif
+    if (!in_use) {
         return NULL;
     }
     return &g_contexts[context_id];
@@ -38,11 +60,18 @@ AntNetContext* get_context_by_id(int context_id)
  */
 int antnet_initialize(int node_count, int min_hops, int max_hops)
 {
-    for (int i = 0; i < MAX_CONTEXTS; i++) {
+#ifndef _WIN32
+    pthread_mutex_lock(&g_contexts_lock);
+#endif
+
+    int i;
+    for (i = 0; i < MAX_CONTEXTS; i++) {
         if (!g_context_in_use[i]) {
             g_context_in_use[i] = 1;
-
-            // Initialize the struct
+#ifndef _WIN32
+            pthread_mutex_unlock(&g_contexts_lock);
+#endif
+            /* Initialize the struct */
             AntNetContext* ctx = &g_contexts[i];
             ctx->node_count = node_count;
             ctx->min_hops   = min_hops;
@@ -53,27 +82,32 @@ int antnet_initialize(int node_count, int min_hops, int max_hops)
             ctx->edges      = NULL;
             ctx->num_edges  = 0;
 
-            // Initialize random solver best path data
+            /* Initialize random solver best path data */
             ctx->random_best_length = 0;
             ctx->random_best_latency = 0;
             memset(ctx->random_best_nodes, 0, sizeof(ctx->random_best_nodes));
 
-            // Fill entire config in context with defaults, then override
+            /* Fill entire config in context with defaults, then override */
             config_set_defaults(&ctx->config);
             ctx->config.set_nb_nodes = node_count;
             ctx->config.min_hops     = min_hops;
             ctx->config.max_hops     = max_hops;
-            // (Other config fields remain at defaults for now)
+            /* (Other config fields remain at defaults for now) */
 
 #ifndef _WIN32
-            // Initialize mutex for this context
+            /* Initialize mutex for this context */
             pthread_mutex_init(&ctx->lock, NULL);
 #endif
 
-            return i; // The newly allocated context ID (>= 0)
+            return i; /* The newly allocated context ID (>= 0) */
         }
     }
-    // No free slot found
+
+#ifndef _WIN32
+    pthread_mutex_unlock(&g_contexts_lock);
+#endif
+
+    /* No free slot found */
     return ERR_NO_FREE_SLOT;
 }
 
@@ -93,14 +127,14 @@ int antnet_run_iteration(int context_id)
     pthread_mutex_lock(&ctx->lock);
 #endif
 
-    // Mock: just increment iteration
+    /* Mock: just increment iteration */
     ctx->iteration++;
 
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
 #endif
 
-    return ERR_SUCCESS; // success
+    return ERR_SUCCESS; /* success */
 }
 
 /*
@@ -111,8 +145,8 @@ int antnet_run_iteration(int context_id)
  * - out_total_latency: sum of delays
  * Returns ERR_SUCCESS on success, negative if error or capacity too small.
  *
- * The original mock data is retained for demonstration, but realistically
- * a real solver or random solver would store best path data in the context.
+ * The original mock data is retained for demonstration. A real solver or random solver
+ * would store best path data in the context.
  */
 int antnet_get_best_path(
     int context_id,
@@ -122,6 +156,10 @@ int antnet_get_best_path(
     int* out_total_latency
 )
 {
+    if (!out_nodes || !out_path_len || !out_total_latency) {
+        return ERR_INVALID_ARGS;
+    }
+
     AntNetContext* ctx = get_context_by_id(context_id);
     if (!ctx) {
         return ERR_INVALID_CONTEXT;
@@ -131,9 +169,10 @@ int antnet_get_best_path(
     pthread_mutex_lock(&ctx->lock);
 #endif
 
-    // This is still mock data for demonstration if no random solver path is present.
-    // The random solver maintains its own best path in ctx->random_best_nodes.
-    // If random_best_length > 0, prefer returning that to reflect a real path.
+    /*
+     * If random solver has a path, prefer returning that.
+     * Else return the fallback mock path for demonstration.
+     */
     if (ctx->random_best_length > 0) {
         if (ctx->random_best_length > max_size) {
 #ifndef _WIN32
@@ -147,7 +186,7 @@ int antnet_get_best_path(
         *out_path_len = ctx->random_best_length;
         *out_total_latency = ctx->random_best_latency;
     } else {
-        // Fallback to the older mock approach
+        /* Fallback to the older mock approach */
         static int mock_nodes[] = {1, 2, 3, 5, 7, 9};
         int length = (int)(sizeof(mock_nodes) / sizeof(mock_nodes[0]));
 
@@ -155,7 +194,7 @@ int antnet_get_best_path(
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
-            return ERR_ARRAY_TOO_SMALL; // user-provided out_nodes array is too small
+            return ERR_ARRAY_TOO_SMALL; /* user-provided out_nodes array is too small */
         }
 
         for (int i = 0; i < length; i++) {
@@ -178,6 +217,10 @@ int antnet_get_best_path(
  */
 int antnet_shutdown(int context_id)
 {
+    /*
+     * security: we do not grab g_contexts_lock yet, because we must finalize the context
+     * lock usage first. Then mark the slot free under the global lock.
+     */
     AntNetContext* ctx = get_context_by_id(context_id);
     if (!ctx) {
         return ERR_INVALID_CONTEXT;
@@ -187,7 +230,7 @@ int antnet_shutdown(int context_id)
     pthread_mutex_lock(&ctx->lock);
 #endif
 
-    // Free allocated arrays
+    /* Free allocated arrays */
     if (ctx->nodes) {
         free(ctx->nodes);
         ctx->nodes = NULL;
@@ -205,7 +248,13 @@ int antnet_shutdown(int context_id)
     pthread_mutex_destroy(&ctx->lock);
 #endif
 
+#ifndef _WIN32
+    pthread_mutex_lock(&g_contexts_lock);
+#endif
     g_context_in_use[context_id] = 0;
+#ifndef _WIN32
+    pthread_mutex_unlock(&g_contexts_lock);
+#endif
 
     return ERR_SUCCESS;
 }
@@ -218,25 +267,31 @@ int antnet_shutdown(int context_id)
  */
 int antnet_run_all_solvers(
     int context_id,
-    // aco
+    /* aco */
     int* out_nodes_aco,
     int max_size_aco,
     int* out_len_aco,
     int* out_latency_aco,
 
-    // random
+    /* random */
     int* out_nodes_random,
     int max_size_random,
     int* out_len_random,
     int* out_latency_random,
 
-    // brute
+    /* brute */
     int* out_nodes_brute,
     int max_size_brute,
     int* out_len_brute,
     int* out_latency_brute
 )
 {
+    if (!out_nodes_aco || !out_len_aco || !out_latency_aco ||
+        !out_nodes_random || !out_len_random || !out_latency_random ||
+        !out_nodes_brute || !out_len_brute || !out_latency_brute) {
+        return ERR_INVALID_ARGS;
+    }
+
     AntNetContext* ctx = get_context_by_id(context_id);
     if (!ctx) {
         return ERR_INVALID_CONTEXT;
@@ -246,16 +301,7 @@ int antnet_run_all_solvers(
     pthread_mutex_lock(&ctx->lock);
 #endif
 
-    // For demonstration, skip the actual ACO call and store empty results:
-    // int rc = aco_v1_search_path(
-    //     ctx, 0, 1, out_nodes_aco, max_size_aco, out_len_aco, out_latency_aco
-    // );
-    // if (rc != ERR_SUCCESS) {
-    // #ifndef _WIN32
-    //     pthread_mutex_unlock(&ctx->lock);
-    // #endif
-    //     return rc;
-    // }
+    /* For demonstration, skip the actual ACO call and store empty results: */
     *out_len_aco = 0;
     *out_latency_aco = 0;
 
@@ -263,7 +309,9 @@ int antnet_run_all_solvers(
     pthread_mutex_unlock(&ctx->lock);
 #endif
 
-    // Call the random solver once; it attempts a new random path and returns the best so far
+    /*
+     * Call the random solver once; it attempts a new random path and returns the best so far.
+     */
     int rc = random_search_path(
         ctx, 0, 1,
         out_nodes_random, max_size_random,
@@ -277,16 +325,7 @@ int antnet_run_all_solvers(
     pthread_mutex_lock(&ctx->lock);
 #endif
 
-    // For demonstration, skip the brute force solver and store empty results:
-    // rc = brute_force_path(
-    //     ctx, 0, 1, out_nodes_brute, max_size_brute, out_len_brute, out_latency_brute
-    // );
-    // if (rc != ERR_SUCCESS) {
-    // #ifndef _WIN32
-    //     pthread_mutex_unlock(&ctx->lock);
-    // #endif
-    //     return rc;
-    // }
+    /* For demonstration, skip the brute force solver and store empty results: */
     *out_len_brute = 0;
     *out_latency_brute = 0;
 
@@ -308,36 +347,36 @@ int antnet_init_from_config(const char* config_path)
         return ERR_INVALID_ARGS;
     }
 
-    // Load config from file
+    /* Load config from file */
     AppConfig tmpcfg;
-    config_set_defaults(&tmpcfg);  // ensures we start with safe defaults
+    config_set_defaults(&tmpcfg);  /* ensures we start with safe defaults */
     if (!config_load(&tmpcfg, config_path)) {
-        // failed to load config or parse .ini
-        return -1; // or any negative error code you prefer
+        /* failed to load config or parse .ini */
+        return -1; /* or any negative error code you prefer */
     }
 
-    // Create a context with the loaded parameters
+    /* Create a context with the loaded parameters */
     int context_id = antnet_initialize(
         tmpcfg.set_nb_nodes,
         tmpcfg.min_hops,
         tmpcfg.max_hops
     );
     if (context_id < 0) {
-        // failed to create a context
-        return context_id; // pass the error code from antnet_initialize
+        /* failed to create a context */
+        return context_id; /* pass the error code from antnet_initialize */
     }
 
-    // Retrieve the context, store entire config struct for future usage
+    /* Retrieve the context, store entire config struct for future usage */
     AntNetContext* ctx = get_context_by_id(context_id);
     if (!ctx) {
-        // extremely unlikely edge case
+        /* extremely unlikely edge case */
         return ERR_INVALID_CONTEXT;
     }
 
 #ifndef _WIN32
     pthread_mutex_lock(&ctx->lock);
 #endif
-    ctx->config = tmpcfg;  // store all fields, in case needed later
+    ctx->config = tmpcfg;  /* store all fields, in case needed later */
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
 #endif

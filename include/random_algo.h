@@ -35,4 +35,4 @@ int random_search_path(
 }
 #endif
 
-#endif // RANDOM_ALGO_H
+#endif /* RANDOM_ALGO_H */

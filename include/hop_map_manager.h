@@ -1,9 +1,12 @@
+//include/hop_map_manager.h
 #ifndef HOP_MAP_MANAGER_H
 #define HOP_MAP_MANAGER_H
 
 #include <stddef.h>
 #include <stdint.h>
+#ifndef _WIN32
 #include <pthread.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,7 +31,9 @@ typedef struct {
 
 /* HopMapManager structure with arrays of nodes and edges */
 typedef struct {
+#ifndef _WIN32
     pthread_mutex_t lock;
+#endif
 
     NodeData *start_node;
     NodeData *end_node;
@@ -61,4 +66,4 @@ void hop_map_manager_export_topology(HopMapManager *mgr,
 }
 #endif
 
-#endif
+#endif /* HOP_MAP_MANAGER_H */

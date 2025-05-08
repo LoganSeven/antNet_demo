@@ -42,4 +42,4 @@ bool config_save(const AppConfig* cfg, const char* filepath);
  */
 void config_set_defaults(AppConfig* cfg);
 
-#endif // CONFIG_MANAGER_H
+#endif /* CONFIG_MANAGER_H */

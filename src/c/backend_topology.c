@@ -7,7 +7,7 @@
 #include "../../include/backend_topology.h"
 #include "../../include/error_codes.h"
 
-/**
+/*
  * get_context_by_id: forward declaration from backend.c
  * Only used here for retrieving the context pointer.
  */
@@ -25,47 +25,52 @@ int antnet_update_topology(
     int num_edges
 )
 {
+    /* security: checking arguments for invalid negative counts */
+    if (num_nodes < 0 || num_edges < 0 || !nodes || !edges) {
+        return ERR_INVALID_ARGS;
+    }
+
     AntNetContext* ctx = get_context_by_id(context_id);
     if (!ctx) {
-        return ERR_INVALID_CONTEXT; // invalid context
+        return ERR_INVALID_CONTEXT; /* invalid context */
     }
 
 #ifndef _WIN32
     pthread_mutex_lock(&ctx->lock);
 #endif
 
-    // Free old node array
+    /* Free old node array */
     if (ctx->nodes) {
         free(ctx->nodes);
         ctx->nodes = NULL;
     }
 
-    // Free old edge array
+    /* Free old edge array */
     if (ctx->edges) {
         free(ctx->edges);
         ctx->edges = NULL;
     }
 
-    // Allocate new node array
+    /* Allocate new node array if num_nodes > 0 */
     if (num_nodes > 0) {
-        ctx->nodes = (NodeData*)malloc(sizeof(NodeData) * num_nodes);
+        ctx->nodes = (NodeData*)malloc(sizeof(NodeData) * (size_t)num_nodes);
         if (!ctx->nodes) {
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
-            return ERR_MEMORY_ALLOCATION; // memory allocation failure
+            return ERR_MEMORY_ALLOCATION; /* memory allocation failure */
         }
-        memcpy(ctx->nodes, nodes, sizeof(NodeData) * num_nodes);
+        memcpy(ctx->nodes, nodes, sizeof(NodeData) * (size_t)num_nodes);
     } else {
         ctx->nodes = NULL;
     }
     ctx->num_nodes = num_nodes;
 
-    // Allocate new edge array
+    /* Allocate new edge array if num_edges > 0 */
     if (num_edges > 0) {
-        ctx->edges = (EdgeData*)malloc(sizeof(EdgeData) * num_edges);
+        ctx->edges = (EdgeData*)malloc(sizeof(EdgeData) * (size_t)num_edges);
         if (!ctx->edges) {
-            // Release node array if edge array fails
+            /* security: release node array if edge array fails */
             free(ctx->nodes);
             ctx->nodes = NULL;
 #ifndef _WIN32
@@ -73,13 +78,13 @@ int antnet_update_topology(
 #endif
             return ERR_MEMORY_ALLOCATION;
         }
-        memcpy(ctx->edges, edges, sizeof(EdgeData) * num_edges);
+        memcpy(ctx->edges, edges, sizeof(EdgeData) * (size_t)num_edges);
     } else {
         ctx->edges = NULL;
     }
     ctx->num_edges = num_edges;
 
-    // If needed, re-initialize any path-finding or pheromone structures here.
+    /* If needed, re-initialize any path-finding or pheromone structures here. */
 
     printf("[antnet_update_topology] Updated with %d nodes and %d edges.\n",
            ctx->num_nodes, ctx->num_edges);

@@ -29,7 +29,11 @@ HopMapManager* hop_map_manager_create() {
     if (!mgr) {
         return NULL;
     }
+
+#ifndef _WIN32
     pthread_mutex_init(&mgr->lock, NULL);
+#endif
+
     mgr->start_node = NULL;
     mgr->end_node   = NULL;
     mgr->hop_nodes  = NULL;
@@ -45,7 +49,10 @@ HopMapManager* hop_map_manager_create() {
 
 void hop_map_manager_destroy(HopMapManager *mgr) {
     if (!mgr) return;
+
+#ifndef _WIN32
     pthread_mutex_destroy(&mgr->lock);
+#endif
 
     if (mgr->start_node) free(mgr->start_node);
     if (mgr->end_node)   free(mgr->end_node);
@@ -57,7 +64,10 @@ void hop_map_manager_destroy(HopMapManager *mgr) {
 
 void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
     if (!mgr) return;
+
+#ifndef _WIN32
     pthread_mutex_lock(&mgr->lock);
+#endif
 
     if (total_nodes < 2) {
         total_nodes = 2;
@@ -71,6 +81,13 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
 
     mgr->start_node = (NodeData*)malloc(sizeof(NodeData));
     mgr->end_node   = (NodeData*)malloc(sizeof(NodeData));
+
+    if (!mgr->start_node || !mgr->end_node) {
+#ifndef _WIN32
+        pthread_mutex_unlock(&mgr->lock);
+#endif
+        return; /* security: out of memory handling */
+    }
 
     /* Basic geometry placeholders as in the Python version */
     float width  = 1000.0f;
@@ -98,7 +115,9 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
     mgr->hop_count = (size_t)(total_nodes - 2);
     mgr->hop_nodes = (NodeData*)malloc(sizeof(NodeData) * mgr->hop_count);
     if (!mgr->hop_nodes) {
+#ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
+#endif
         return;
     }
 
@@ -156,7 +175,9 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
         }
     }
 
+#ifndef _WIN32
     pthread_mutex_unlock(&mgr->lock);
+#endif
 }
 
 static float dist_sq(float ax, float ay, float bx, float by) {
@@ -167,7 +188,10 @@ static float dist_sq(float ax, float ay, float bx, float by) {
 
 void hop_map_manager_create_default_edges(HopMapManager *mgr) {
     if (!mgr) return;
+
+#ifndef _WIN32
     pthread_mutex_lock(&mgr->lock);
+#endif
 
     /* clear old edges */
     if (mgr->edges) {
@@ -177,16 +201,22 @@ void hop_map_manager_create_default_edges(HopMapManager *mgr) {
     mgr->edge_count = 0;
 
     if (!mgr->start_node || !mgr->end_node) {
+#ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
+#endif
         return;
     }
     if (!mgr->hop_nodes || mgr->hop_count == 0) {
         /* can simply connect start->end */
         mgr->edges = (EdgeData*)malloc(sizeof(EdgeData));
-        mgr->edge_count = 1;
-        mgr->edges[0].from_id = mgr->start_node->node_id;
-        mgr->edges[0].to_id   = mgr->end_node->node_id;
+        if (mgr->edges) {
+            mgr->edge_count = 1;
+            mgr->edges[0].from_id = mgr->start_node->node_id;
+            mgr->edges[0].to_id   = mgr->end_node->node_id;
+        }
+#ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
+#endif
         return;
     }
 
@@ -194,14 +224,23 @@ void hop_map_manager_create_default_edges(HopMapManager *mgr) {
     size_t interior = (mgr->hop_count < 3) ? mgr->hop_count : 3;
     int *path_node_ids = (int*)malloc(sizeof(int) * (2 + interior)); /* start + interior + end */
     if (!path_node_ids) {
+#ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
-        return;
+#endif
+        return; /* security: out of memory */
     }
 
     path_node_ids[0] = mgr->start_node->node_id;
     /* gather local array of hop indexes */
     size_t hop_count_local = mgr->hop_count;
     int *hop_idx_used = (int*)calloc(hop_count_local, sizeof(int)); /* track used hops */
+    if (!hop_idx_used) {
+        free(path_node_ids);
+#ifndef _WIN32
+        pthread_mutex_unlock(&mgr->lock);
+#endif
+        return; /* security: out of memory */
+    }
 
     /* pick nearest each time */
     NodeData current = *(mgr->start_node);
@@ -241,7 +280,9 @@ void hop_map_manager_create_default_edges(HopMapManager *mgr) {
     free(path_node_ids);
     free(hop_idx_used);
 
+#ifndef _WIN32
     pthread_mutex_unlock(&mgr->lock);
+#endif
 }
 
 void hop_map_manager_export_topology(HopMapManager *mgr,
@@ -254,7 +295,9 @@ void hop_map_manager_export_topology(HopMapManager *mgr,
         return;
     }
 
+#ifndef _WIN32
     pthread_mutex_lock(&mgr->lock);
+#endif
 
     /* Count how many nodes exist (start + end + hops) */
     size_t ncount = 0;
@@ -289,5 +332,7 @@ void hop_map_manager_export_topology(HopMapManager *mgr,
         *out_edge_count = ecount;
     }
 
+#ifndef _WIN32
     pthread_mutex_unlock(&mgr->lock);
+#endif
 }
