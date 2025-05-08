@@ -1,4 +1,5 @@
 // src/c/backend_topology.c
+// src/c/backend_topology.c
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -42,7 +43,15 @@ int antnet_update_topology(
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
-            return ERR_INVALID_ARGS;          /* security/hardening */
+            return ERR_INVALID_ARGS; /* security/hardening */
+        }
+
+        /* security/hardening: disallow negative latencies to handle invalid_topology_args test */
+        if (nodes[i].delay_ms < 0) {
+#ifndef _WIN32
+            pthread_mutex_unlock(&ctx->lock);
+#endif
+            return ERR_INVALID_ARGS; /* security/hardening */
         }
     }
 
@@ -55,7 +64,7 @@ int antnet_update_topology(
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
-            return ERR_INVALID_ARGS;          /* security/hardening */
+            return ERR_INVALID_ARGS; /* security/hardening */
         }
     }
 

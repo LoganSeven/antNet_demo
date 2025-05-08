@@ -1,11 +1,11 @@
 # src/python/core/worker.py
-
 import time
 from threading import Event
 from qtpy.QtCore import QObject
 
 from core.callback_adapter import QCCallbackToSignal
 from ffi.backend_api import AntNetWrapper
+from structs._generated.auto_structs import AppConfig
 
 class Worker(QObject):
     """
@@ -17,8 +17,26 @@ class Worker(QObject):
         self._stop_event = Event()
         self.callback_adapter = QCCallbackToSignal()
 
-        # Initialize backend C context
-        self.backend = AntNetWrapper(node_count=10, min_hops=2, max_hops=5)
+        # Example usage of the auto-generated AppConfig typed dict.
+        # A minimal default config is provided here for demonstration.
+        default_config: AppConfig = {
+            "nb_swarms": 1,
+            "set_nb_nodes": 10,
+            "min_hops": 2,
+            "max_hops": 5,
+            "default_delay": 20,
+            "death_delay": 9999,
+            "under_attack_id": -1,
+            "attack_started": False,
+            "simulate_ddos": False,
+            "show_random_performance": True,
+            "show_brute_performance": True
+        }
+
+        # Initialize the backend C context using the typed dict.
+        # If you want to load settings from a file instead, pass from_config="path/to.ini"
+        # to the AntNetWrapper constructor.
+        self.backend = AntNetWrapper(app_config=default_config)
 
     def run(self):
         """
