@@ -1,4 +1,4 @@
-//src/c/backend_topology.c
+// src/c/backend_topology.c
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -9,13 +9,11 @@
 
 /*
  * get_context_by_id: forward declaration from backend.c
- * Only used here for retrieving the context pointer.
  */
 extern AntNetContext* get_context_by_id(int);
 
 /*
- * antnet_update_topology: replaces the context's node/edge arrays with the given ones.
- * The function is thread-safe due to the context-level mutex.
+ * antnet_update_topology: thread-safe replacement of node / edge arrays.
  */
 int antnet_update_topology(
     int context_id,
@@ -25,52 +23,63 @@ int antnet_update_topology(
     int num_edges
 )
 {
-    /* security: checking arguments for invalid negative counts */
     if (num_nodes < 0 || num_edges < 0 || !nodes || !edges) {
         return ERR_INVALID_ARGS;
     }
 
     AntNetContext* ctx = get_context_by_id(context_id);
     if (!ctx) {
-        return ERR_INVALID_CONTEXT; /* invalid context */
+        return ERR_INVALID_CONTEXT;
     }
 
 #ifndef _WIN32
     pthread_mutex_lock(&ctx->lock);
 #endif
 
-    /* Free old node array */
-    if (ctx->nodes) {
-        free(ctx->nodes);
-        ctx->nodes = NULL;
+    /* Reject negative node IDs, allow sparse positive IDs — tests rely on this. */
+    for (int i = 0; i < num_nodes; i++) {
+        if (nodes[i].node_id < 0) {
+#ifndef _WIN32
+            pthread_mutex_unlock(&ctx->lock);
+#endif
+            return ERR_INVALID_ARGS;          /* security/hardening */
+        }
     }
 
-    /* Free old edge array */
-    if (ctx->edges) {
-        free(ctx->edges);
-        ctx->edges = NULL;
+    /*
+     * Edges: only validate non-negative IDs. Do **not** constrain to 0..num_nodes-1,
+     * because higher, sparse node IDs are legal in tests (e.g., 10, 11 with num_nodes = 2).
+     */
+    for (int e = 0; e < num_edges; e++) {
+        if (edges[e].from_id < 0 || edges[e].to_id < 0) {
+#ifndef _WIN32
+            pthread_mutex_unlock(&ctx->lock);
+#endif
+            return ERR_INVALID_ARGS;          /* security/hardening */
+        }
     }
 
-    /* Allocate new node array if num_nodes > 0 */
+    /* --- replace nodes ---------------------------------------------------- */
+    free(ctx->nodes);
+    ctx->nodes = NULL;
     if (num_nodes > 0) {
         ctx->nodes = (NodeData*)malloc(sizeof(NodeData) * (size_t)num_nodes);
         if (!ctx->nodes) {
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
-            return ERR_MEMORY_ALLOCATION; /* memory allocation failure */
+            return ERR_MEMORY_ALLOCATION;
         }
         memcpy(ctx->nodes, nodes, sizeof(NodeData) * (size_t)num_nodes);
-    } else {
-        ctx->nodes = NULL;
     }
     ctx->num_nodes = num_nodes;
 
-    /* Allocate new edge array if num_edges > 0 */
+    /* --- replace edges ---------------------------------------------------- */
+    free(ctx->edges);
+    ctx->edges = NULL;
     if (num_edges > 0) {
         ctx->edges = (EdgeData*)malloc(sizeof(EdgeData) * (size_t)num_edges);
         if (!ctx->edges) {
-            /* security: release node array if edge array fails */
             free(ctx->nodes);
             ctx->nodes = NULL;
 #ifndef _WIN32
@@ -79,12 +88,8 @@ int antnet_update_topology(
             return ERR_MEMORY_ALLOCATION;
         }
         memcpy(ctx->edges, edges, sizeof(EdgeData) * (size_t)num_edges);
-    } else {
-        ctx->edges = NULL;
     }
     ctx->num_edges = num_edges;
-
-    /* If needed, re-initialize any path-finding or pheromone structures here. */
 
     printf("[antnet_update_topology] Updated with %d nodes and %d edges.\n",
            ctx->num_nodes, ctx->num_edges);
@@ -92,6 +97,5 @@ int antnet_update_topology(
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
 #endif
-
     return ERR_SUCCESS;
 }

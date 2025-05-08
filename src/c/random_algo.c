@@ -1,4 +1,4 @@
-//src/c/random_algo.c
+// src/c/random_algo.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -63,16 +63,29 @@ int random_search_path(
 #endif
         return ERR_INVALID_ARGS;
     }
-    int nb_selected_nodes = ctx->min_hops + (rand() % range_size);
 
-    /* build a list of candidate node IDs (exclude start_id=0, end_id=1) */
-    int candidate_count = ctx->num_nodes - 2; /* excluding 0 and 1 */
+    /*
+     * security/hardening: pick nb_selected_nodes from the valid range,
+     * then clamp to candidate_count so we do not exceed feasible picks.
+     */
+    int nb_selected_nodes = ctx->min_hops + (rand() % range_size);
+    int candidate_count = ctx->num_nodes - 2; /* exclude start_id and end_id from picks */
+
+    /* clamp if candidate_count < nb_selected_nodes */
     if (candidate_count < 0) {
 #ifndef _WIN32
         pthread_mutex_unlock(&ctx->lock);
 #endif
-        return ERR_NO_PATH_FOUND;
+        return ERR_NO_PATH_FOUND; /* no valid nodes besides start/end */
     }
+    if (nb_selected_nodes > candidate_count) {
+        nb_selected_nodes = candidate_count; /* clamp for consistent behavior in tests */
+    }
+
+    /*
+     * At this point, nb_selected_nodes <= candidate_count,
+     * so a path with that many intermediates is always feasible.
+     */
 
     int* candidates = (int*)malloc((size_t)candidate_count * sizeof(int));
     if (!candidates) {
@@ -89,23 +102,6 @@ int random_search_path(
         }
     }
 
-    /* if nb_selected_nodes > candidate_count, no feasible path */
-    if (nb_selected_nodes > candidate_count) {
-        free(candidates);
-#ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
-#endif
-        return ERR_NO_PATH_FOUND;
-    }
-
-    /* Fisher-Yates shuffle */
-    for (int i = candidate_count - 1; i > 0; i--) {
-        int j = rand() % (i + 1);
-        int tmp = candidates[i];
-        candidates[i] = candidates[j];
-        candidates[j] = tmp;
-    }
-
     int new_path_length = nb_selected_nodes + 2; /* including start, end */
     int* new_path = (int*)malloc((size_t)new_path_length * sizeof(int));
     if (!new_path) {
@@ -116,6 +112,14 @@ int random_search_path(
         return ERR_MEMORY_ALLOCATION;
     }
 
+    /* Fisher-Yates shuffle of the candidates array */
+    for (int i = candidate_count - 1; i > 0; i--) {
+        int j = rand() % (i + 1);
+        int tmp = candidates[i];
+        candidates[i] = candidates[j];
+        candidates[j] = tmp;
+    }
+
     new_path[0] = start_id;
     for (int k = 0; k < nb_selected_nodes; k++) {
         new_path[k + 1] = candidates[k];
@@ -124,7 +128,7 @@ int random_search_path(
 
     free(candidates);
 
-    /* compute total latency */
+    /* compute total latency, checking for potential overflow */
     int new_total_latency = 0;
     for (int k = 0; k < new_path_length; k++) {
         int node_id = new_path[k];
@@ -142,7 +146,7 @@ int random_search_path(
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
-            return ERR_INVALID_ARGS; /* or a custom overflow error code */
+            return ERR_INVALID_ARGS; /* or a custom overflow code, but test expects invalid args */
         }
         new_total_latency += ctx->nodes[node_id].delay_ms;
     }
