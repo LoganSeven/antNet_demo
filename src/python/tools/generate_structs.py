@@ -1,31 +1,10 @@
-"""
-generate_structs.py
-Auto-generates Python TypedDict definitions from designated C headers.
-
-Usage:
-  python generate_structs.py --headers <header1> <header2> ... --output <outfile>
-
-Example:
-  python generate_structs.py \
-    --headers ../../../include/antnet_network_types.h ../../../include/antnet_config_types.h \
-    --output src/python/structs/_generated/auto_structs.py
-
-This script searches for patterns like:
-    typedef struct {
-        <type> <fieldname>;
-        ...
-    } <StructName>;
-
-It then creates a Python TypedDict for each struct.
-"""
-
 import re
 import argparse
 import os
 
 # ------------------------------------------------------------------------ regex patterns
 STRUCT_PATTERN = re.compile(
-    r"typedef\s+struct\s*\{\s*(.*?)\}\s*(\w+)\s*;",  # group(1) = struct body, group(2) = struct name
+    r"typedef\s+struct(?:\s+\w+)?\s*\{\s*(.*?)\}\s*(\w+)\s*;",  # supports both anonymous and named structs
     re.DOTALL
 )
 
@@ -45,8 +24,8 @@ TYPE_MAP = {
 # ------------------------------------------------------------------------ parse logic
 def parse_structs_from_file(filepath):
     """
-    Reads the given .h file, finds all 'typedef struct {...} Name;'
-    Returns a list of (struct_name, [ (field_type, field_name), ... ]).
+    Reads the given .h file, finds all 'typedef struct {...} Name;' or 'typedef struct Name {...} Name;'
+    Returns a list of (struct_name, [ (field_name, py_type), ... ], source_path).
     """
     with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
@@ -64,8 +43,6 @@ def parse_structs_from_file(filepath):
 
             ctype = ctype.strip()
 
-            # If pointer or array, treat the field as 'Any'.
-            # In practice you might choose a more specific Python type.
             if pointer_part or "[]" in field_name:
                 pytype = "Any"
             else:
@@ -73,22 +50,23 @@ def parse_structs_from_file(filepath):
 
             fields.append((field_name, pytype))
 
-        results.append((struct_name, fields))
+        results.append((struct_name, fields, filepath))
 
     return results
 
 
-def generate_typed_dict_code(structs):
+def generate_typed_dict_code(structs_with_paths):
     """
-    Given a list of (struct_name, [(field_name, py_type), ...]),
+    Given a list of (struct_name, [(field_name, py_type), ...], filepath),
     emit typed Python code in a string.
     """
     lines = []
     lines.append('from typing import TypedDict, Any\n')
     lines.append('# This file is auto-generated. Do not edit.\n')
 
-    for struct_name, fields in structs:
-        lines.append(f"\nclass {struct_name}(TypedDict):")
+    for struct_name, fields, path in structs_with_paths:
+        lines.append(f"\n# from {path}")
+        lines.append(f"class {struct_name}(TypedDict):")
         if not fields:
             lines.append("    pass")
         else:

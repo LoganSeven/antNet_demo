@@ -1,4 +1,4 @@
-//include/antnet_network_types.h
+// include/antnet_network_types.h
 #ifndef ANTNET_NETWORK_TYPES_H
 #define ANTNET_NETWORK_TYPES_H
 
@@ -6,29 +6,38 @@
 extern "C" {
 #endif
 
-/*
- * NodeData: holds node ID and node-specific delay (in milliseconds), as well as
- *           geometry data (x, y, radius) for the hop_map_manager usage.
- *           The geometry fields are optional for the ACA logic but remain
- *           unified here to avoid ABI mismatches or repeated definitions.
- */
-typedef struct NodeData {
-    int    node_id;
-    int    delay_ms;   /* Delay in milliseconds */
+#ifndef CFFI_BUILD
 
-    /* geometry fields used by hop_map_manager; can be ignored if unused */
+typedef struct node_data_s {
+    int    node_id;
+    int    delay_ms;
     float  x;
     float  y;
     int    radius;
 } NodeData;
 
-/*
- * EdgeData: holds directed connection from one node to another.
- */
-typedef struct EdgeData {
+typedef struct edge_data_s {
     int from_id;
     int to_id;
 } EdgeData;
+
+#else /* CFFI_BUILD */
+
+/* Minimal definitions for cffi. */
+typedef struct node_data_s {
+    int    node_id;
+    int    delay_ms;
+    float  x;
+    float  y;
+    int    radius;
+} NodeData;
+
+typedef struct edge_data_s {
+    int from_id;
+    int to_id;
+} EdgeData;
+
+#endif /* CFFI_BUILD */
 
 #ifdef __cplusplus
 }

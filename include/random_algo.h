@@ -1,38 +1,36 @@
-//include/random_algo.h
-#ifndef RANDOM_ALGO_H
-#define RANDOM_ALGO_H
-
-/*
- * random_algo.h
- * Provides a simple random path search to find a route from start_id to end_id.
- * This approach does not guarantee the best path; it merely returns any found path.
- */
+// include/backend_topology.h
+#ifndef BACKEND_TOPOLOGY_H
+#define BACKEND_TOPOLOGY_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "backend.h"
+/*
+ * This header references NodeData / EdgeData in its function prototype.
+ * The canonical definitions of these structs live in antnet_network_types.h.
+ * This file no longer redeclares them under CFFI_BUILD, to avoid duplication.
+ */
+
+#include "antnet_network_types.h"
 
 /*
- * random_search_path: attempts one new random path from start_id to end_id
- * by randomly selecting a count of nodes in [ctx->min_hops..ctx->max_hops] from the
- * available nodes, then updating ctx->random_best_* if the path is better.
- * On success, returns 0 and copies the current best path (which may have been improved).
- * If no path can be found or an error occurs, returns negative.
+ * antnet_update_topology: updates the internal graph data within the context.
+ * context_id: context handle (index).
+ * nodes: array of NodeData, length num_nodes
+ * edges: array of EdgeData, length num_edges
+ * Returns 0 on success, negative on error.
  */
-int random_search_path(
-    AntNetContext* ctx,
-    int start_id,
-    int end_id,
-    int* out_nodes,
-    int max_size,
-    int* out_path_len,
-    int* out_total_latency
+int antnet_update_topology(
+    int context_id,
+    const NodeData* nodes,
+    int num_nodes,
+    const EdgeData* edges,
+    int num_edges
 );
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* RANDOM_ALGO_H */
+#endif /* BACKEND_TOPOLOGY_H */

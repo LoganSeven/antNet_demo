@@ -1,4 +1,4 @@
-//include/antnet_config_types.h
+// include/antnet_config_types.h
 #ifndef ANTNET_CONFIG_TYPES_H
 #define ANTNET_CONFIG_TYPES_H
 

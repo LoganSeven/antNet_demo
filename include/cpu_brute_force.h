@@ -1,4 +1,4 @@
-//include/cpu_brute_force.h
+// include/cpu_brute_force.h
 #ifndef CPU_BRUTE_FORCE_H
 #define CPU_BRUTE_FORCE_H
 

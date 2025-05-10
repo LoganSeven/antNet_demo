@@ -5,6 +5,8 @@
 #include <limits.h>
 #include "../../include/error_codes.h"
 #include "../../include/random_algo.h"
+#include "../../include/backend.h"
+
 
 /*
  * random_search_path: main function
