@@ -1,4 +1,5 @@
 // src/c/random_algo.c
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -6,7 +7,6 @@
 #include "../../include/error_codes.h"
 #include "../../include/random_algo.h"
 #include "../../include/backend.h"
-
 
 /*
  * random_search_path: main function
@@ -17,6 +17,10 @@
  * - if it improves the stored best path in ctx->random_best_*, updates it
  * - copies the best path so far into out_nodes, out_path_len, out_total_latency
  * Returns 0 on success, negative error codes otherwise
+ *
+ * Thread Safety:
+ *   This function does NOT acquire ctx->lock.
+ *   The caller must lock ctx before calling (e.g. from bridging or top-level API).
  */
 
 /* security: track if we have seeded the RNG once to avoid repeated seeding on each call */
@@ -39,16 +43,9 @@ int random_search_path(
         return ERR_NO_TOPOLOGY;
     }
 
-#ifndef _WIN32
-    pthread_mutex_lock(&ctx->lock);
-#endif
-
     /* Ensure the result array is large enough for worst case (max_hops + 2) */
     int needed_capacity = ctx->max_hops + 2;
     if (needed_capacity > max_size || needed_capacity > 1024) {
-#ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
-#endif
         return ERR_ARRAY_TOO_SMALL;
     }
 
@@ -60,9 +57,6 @@ int random_search_path(
 
     int range_size = ctx->max_hops - ctx->min_hops + 1;
     if (range_size <= 0) {
-#ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
-#endif
         return ERR_INVALID_ARGS;
     }
 
@@ -75,9 +69,6 @@ int random_search_path(
 
     /* clamp if candidate_count < nb_selected_nodes */
     if (candidate_count < 0) {
-#ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
-#endif
         return ERR_NO_PATH_FOUND; /* no valid nodes besides start/end */
     }
     if (nb_selected_nodes > candidate_count) {
@@ -88,12 +79,8 @@ int random_search_path(
      * At this point, nb_selected_nodes <= candidate_count,
      * so a path with that many intermediates is always feasible.
      */
-
     int* candidates = (int*)malloc((size_t)candidate_count * sizeof(int));
     if (!candidates) {
-#ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
-#endif
         return ERR_MEMORY_ALLOCATION;
     }
 
@@ -108,9 +95,6 @@ int random_search_path(
     int* new_path = (int*)malloc((size_t)new_path_length * sizeof(int));
     if (!new_path) {
         free(candidates);
-#ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
-#endif
         return ERR_MEMORY_ALLOCATION;
     }
 
@@ -136,19 +120,13 @@ int random_search_path(
         int node_id = new_path[k];
         if (node_id < 0 || node_id >= ctx->num_nodes) {
             free(new_path);
-#ifndef _WIN32
-            pthread_mutex_unlock(&ctx->lock);
-#endif
             return ERR_NO_PATH_FOUND;
         }
         /* security: check for integer overflow in summation */
         if (ctx->nodes[node_id].delay_ms > INT_MAX - new_total_latency) {
             /* security: overflow potential */
             free(new_path);
-#ifndef _WIN32
-            pthread_mutex_unlock(&ctx->lock);
-#endif
-            return ERR_INVALID_ARGS; /* or a custom overflow code, but test expects invalid args */
+            return ERR_INVALID_ARGS; 
         }
         new_total_latency += ctx->nodes[node_id].delay_ms;
     }
@@ -169,9 +147,6 @@ int random_search_path(
 
     /* Copy the best path so far to out_* fields */
     if (ctx->random_best_length > max_size) {
-#ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
-#endif
         return ERR_ARRAY_TOO_SMALL;
     }
     for (int p = 0; p < ctx->random_best_length; p++) {
@@ -179,10 +154,6 @@ int random_search_path(
     }
     *out_path_len = ctx->random_best_length;
     *out_total_latency = ctx->random_best_latency;
-
-#ifndef _WIN32
-    pthread_mutex_unlock(&ctx->lock);
-#endif
 
     return ERR_SUCCESS;
 }

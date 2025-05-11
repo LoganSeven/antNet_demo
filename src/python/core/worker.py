@@ -1,4 +1,5 @@
 # src/python/core/worker.py
+
 import time
 from threading import Event
 from qtpy.QtCore import QObject
@@ -18,7 +19,6 @@ class Worker(QObject):
         self.callback_adapter = QCCallbackToSignal()
 
         # Example usage of the auto-generated AppConfig typed dict.
-        # A minimal default config is provided here for demonstration.
         default_config: AppConfig = {
             "nb_swarms": 1,
             "set_nb_nodes": 10,
@@ -34,8 +34,6 @@ class Worker(QObject):
         }
 
         # Initialize the backend C context using the typed dict.
-        # If you want to load settings from a file instead, pass from_config="path/to.ini"
-        # to the AntNetWrapper constructor.
         self.backend = AntNetWrapper(app_config=default_config)
 
     def run(self):

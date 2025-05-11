@@ -102,6 +102,7 @@ int antnet_get_best_path(int context_id, int *out_nodes, int max_size, int *out_
 int antnet_run_all_solvers(int context_id, int *out_nodes_aco, int max_size_aco, int *out_len_aco, int *out_latency_aco, int *out_nodes_random, int max_size_random, int *out_len_random, int *out_latency_random, int *out_nodes_brute, int max_size_brute, int *out_len_brute, int *out_latency_brute);
 int antnet_init_from_config(const char *config_path);
 int antnet_update_topology(int context_id, const NodeData *nodes, int num_nodes, const EdgeData *edges, int num_edges);
+int random_search_path(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);
 int brute_force_search_step(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);
 void brute_force_reset_state(AntNetContext *ctx);
 int aco_v1_init(AntNetContext *ctx);

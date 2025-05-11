@@ -1,36 +1,41 @@
-// include/backend_topology.h
-#ifndef BACKEND_TOPOLOGY_H
-#define BACKEND_TOPOLOGY_H
+#ifndef RANDOM_ALGO_H
+#define RANDOM_ALGO_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "backend.h"  /* for AntNetContext */
+#include "error_codes.h"  /* for ERR_SUCCESS and error codes */
 
 /*
- * This header references NodeData / EdgeData in its function prototype.
- * The canonical definitions of these structs live in antnet_network_types.h.
- * This file no longer redeclares them under CFFI_BUILD, to avoid duplication.
+ * random_search_path:
+ * Attempts to build a random path between start_id and end_id.
+ * 
+ * The path is built as:
+ *   start_id + [randomly shuffled intermediate hops] + end_id
+ * The number of intermediate hops is chosen randomly in [min_hops..max_hops],
+ * clamped to available node count (excluding start and end).
+ *
+ * On success, the result is copied into out_nodes[0..*out_path_len-1]
+ * and total latency is written to *out_total_latency.
+ *
+ * Thread Safety:
+ *   This function does NOT acquire ctx->lock.
+ *   The caller must lock ctx before calling (e.g. from bridging or top-level API).
+ *
+ * Returns:
+ *   ERR_SUCCESS (0)              on success
+ *   ERR_INVALID_ARGS (< 0)       if input pointers are null or arguments are invalid
+ *   ERR_NO_TOPOLOGY              if ctx->nodes is null or empty
+ *   ERR_NO_PATH_FOUND            if no valid intermediate nodes are available
+ *   ERR_ARRAY_TOO_SMALL          if out_nodes[] buffer is too small
+ *   ERR_MEMORY_ALLOCATION        if allocation fails
  */
-
-#include "antnet_network_types.h"
-
-/*
- * antnet_update_topology: updates the internal graph data within the context.
- * context_id: context handle (index).
- * nodes: array of NodeData, length num_nodes
- * edges: array of EdgeData, length num_edges
- * Returns 0 on success, negative on error.
- */
-int antnet_update_topology(
-    int context_id,
-    const NodeData* nodes,
-    int num_nodes,
-    const EdgeData* edges,
-    int num_edges
+int random_search_path(
+    AntNetContext* ctx,
+    int start_id,
+    int end_id,
+    int* out_nodes,
+    int max_size,
+    int* out_path_len,
+    int* out_total_latency
 );
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* BACKEND_TOPOLOGY_H */
+#endif /* RANDOM_ALGO_H */

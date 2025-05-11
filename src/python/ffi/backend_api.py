@@ -1,4 +1,5 @@
 # src/python/ffi/backend_api.py
+
 # High-level Python wrapper for the C AntNet backend.
 # security/hardening: negative C return code ⇒ ValueError
 # unexpected positive non-zero ⇒ RuntimeError
@@ -8,15 +9,8 @@ import os
 import sys
 import importlib
 
-# Import auto-generated Python equivalents of C error codes
-from consts._generated.error_codes_generated import (
-    ERR_SUCCESS,
-)
-# If you have other error constants (e.g., ERR_INVALID_ARGS, ERR_INVALID_CONTEXT),
-# you can import them as needed.
+from consts._generated.error_codes_generated import ERR_SUCCESS
 
-
-# --------------------------------------------------------------------- helper
 def _ensure_backend_cffi_loaded():
     """
     Attempt to import backend_cffi. If not found, append common build/product
@@ -35,21 +29,19 @@ def _ensure_backend_cffi_loaded():
         for path in candidates:
             if path not in sys.path and os.path.isdir(path):
                 sys.path.insert(0, path)
-        # retry exactly once
         return importlib.import_module("backend_cffi")
 
 
 _backend = _ensure_backend_cffi_loaded()
 ffi, lib = _backend.ffi, _backend.lib  # type: ignore
 
-
 class AntNetWrapper:
     """
     AntNetWrapper: thin, pythonic façade over the native AntNet API.
     This version allows three ways to initialize:
-      (1) from_config="some.ini"                # calls antnet_init_from_config
-      (2) app_config=some_dict                  # reads dict fields, calls antnet_initialize
-      (3) node_count=..., min_hops=..., max_hops=...   # direct call to antnet_initialize
+      (1) from_config="some.ini"
+      (2) app_config=some_dict
+      (3) node_count=..., min_hops=..., max_hops=...
     If more than one is provided, from_config has highest priority, then app_config,
     then node_count+min_hops+max_hops.
     """
@@ -62,28 +54,22 @@ class AntNetWrapper:
         from_config: str | None = None,
         app_config: dict | None = None,
     ):
-        # context_id is always an integer (>= 0 on success, or -1 if something fails)
-        # or None if not yet created / already shut down.
         self.context_id: int | None = None
 
-        # 1) If from_config is given, use antnet_init_from_config
+        # 1) If from_config is given
         if from_config is not None:
             if not isinstance(from_config, str):
                 raise ValueError("from_config must be a string path to .ini")
             rc = lib.antnet_init_from_config(from_config.encode("utf-8"))
             if rc < 0:
-                # Negative => Python raises ValueError
                 raise ValueError(f"antnet_init_from_config failed with code {rc}")
-            # else rc >= 0 => valid context ID
             self.context_id = rc
             return
 
-        # 2) If app_config is given, read fields from the dictionary
-        #    Typically: set_nb_nodes, min_hops, max_hops, etc.
+        # 2) If app_config is given
         if app_config is not None:
             if not isinstance(app_config, dict):
                 raise ValueError("app_config must be a dict (likely from TypedDict)")
-            # read from the typed dictionary. If missing keys, KeyError or TypeError might occur
             node_count = app_config["set_nb_nodes"]
             min_hops = app_config["min_hops"]
             max_hops = app_config["max_hops"]
@@ -92,10 +78,9 @@ class AntNetWrapper:
             if rc < 0:
                 raise ValueError(f"antnet_initialize failed with code {rc}")
             self.context_id = rc
-            # Done
             return
 
-        # 3) If node_count, min_hops, max_hops is used
+        # 3) node_count + min_hops + max_hops
         if node_count is not None and min_hops is not None and max_hops is not None:
             rc = lib.antnet_initialize(node_count, min_hops, max_hops)
             if rc < 0:
@@ -103,17 +88,13 @@ class AntNetWrapper:
             self.context_id = rc
             return
 
-        # If none of the above, raise an error
         raise ValueError(
             "AntNetWrapper requires either from_config=..., or app_config=..., "
             "or node_count/min_hops/max_hops."
         )
 
     @classmethod
-    def from_config(cls, path: str) -> "AntNetWrapper":
-        """
-        Alternate constructor for clarity. Internally calls __init__(from_config=path).
-        """
+    def from_config(cls, path: str) -> AntNetWrapper:
         return cls(from_config=path)
 
     def run_iteration(self) -> None:
@@ -168,6 +149,10 @@ class AntNetWrapper:
             raise RuntimeError(f"update_topology returned unexpected code {rc}")
 
     def run_all_solvers(self):
+        """
+        Runs the ACO, random, and brute force solvers in a single call,
+        returning a dictionary with results for each approach.
+        """
         max_nodes = 1024
         a_nodes = ffi.new("int[]", max_nodes)
         r_nodes = ffi.new("int[]", max_nodes)
@@ -217,8 +202,6 @@ class AntNetWrapper:
                 raise RuntimeError(f"antnet_shutdown returned unexpected code {rc}")
 
     def __del__(self):
-        # Safely finalize if GC calls destructor. If "self.context_id" is missing,
-        # Python has partially torn down the object. Try/except to be safe:
         try:
             self.shutdown()
         except:
