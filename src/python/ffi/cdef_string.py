@@ -29,7 +29,9 @@ typedef struct {
     int candidate_count;
     int current_L;
     int permutation[1024];
+    int combination[1024];
     int at_first_permutation;
+    int at_first_combination;
     int done;
 } BruteForceState;
 typedef struct {

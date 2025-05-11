@@ -7,13 +7,14 @@
 /*
  * brute_force_search_step: enumerates exactly one new path in ascending order
  * of path length L in [ctx->min_hops..ctx->max_hops], considering permutations
- * of candidate internal nodes. If a path is found, it updates ctx->brute_best_*
- * if better. If no path remains, the solver is considered done.
+ * and combinations of candidate internal nodes. If a better path is found,
+ * it updates ctx->brute_best_*.
  *
- * The function then copies the best path so far (if any) into:
+ * The best path found so far (if any) is immediately copied into:
  * out_nodes, out_path_len, out_total_latency.
  *
- * Returns 0 on success, negative on error.
+ * Returns 0 on success, ERR_NO_PATH_FOUND if no valid path exists,
+ * or a negative error code on other errors.
  */
 int brute_force_search_step(
     AntNetContext* ctx,
@@ -27,8 +28,8 @@ int brute_force_search_step(
 
 /*
  * brute_force_reset_state: restarts the enumeration from scratch (min_hops),
- * but preserves ctx->brute_best_length and ctx->brute_best_latency.
- * This is used if the topology (nodes/latencies) changes.
+ * resetting permutation and combination states but preserving the best path
+ * found so far. Should be called if the topology changes.
  */
 void brute_force_reset_state(AntNetContext* ctx);
 

@@ -49,7 +49,9 @@ class BruteForceState(TypedDict):
     candidate_count: int
     current_L: int
     permutation: int
+    combination: int
     at_first_permutation: int
+    at_first_combination: int
     done: int
 
 # from include/backend.h

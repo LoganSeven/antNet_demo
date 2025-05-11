@@ -1,4 +1,3 @@
-// include/antnet_brute_force_types.h
 #ifndef ANTNET_BRUTE_FORCE_TYPES_H
 #define ANTNET_BRUTE_FORCE_TYPES_H
 
@@ -30,10 +29,22 @@ typedef struct {
     int permutation[1024];
 
     /*
+     * combination[]: an index-based combination over [0..candidate_count-1].
+     * The solver uses this to select subsets of nodes before permuting them.
+     */
+    int combination[1024];
+
+    /*
      * at_first_permutation: indicates if the solver has not called next_permutation() yet
-     * for the current_L. If 1, the solver must initialize permutation in ascending order.
+     * for the current combination. If 1, the solver must initialize permutation in ascending order.
      */
     int at_first_permutation;
+
+    /*
+     * at_first_combination: indicates if the solver has not yet started combinations
+     * for the current_L. If 1, the solver must initialize combination in ascending order.
+     */
+    int at_first_combination;
 
     /*
      * done: 1 if the solver enumerated all possible path lengths and permutations,
