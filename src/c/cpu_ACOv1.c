@@ -20,14 +20,14 @@
  *   the selected subset, the final path, total cost, etc.
  *
  * Rationale:
- *   - We pick nb_selected_nodes ∈ [ctx->min_hops..ctx->max_hops].
- *   - We clamp it by candidate_count = (ctx->num_nodes - 2).
- *   - We build a node_list of all possible intermediate nodes = [2..(num_nodes-1)].
- *   - We compute a node-level pheromone: node_pheromone[i] = sum of pheromones[i*n + k] for k in [0..n-1].
- *   - We select nb_selected_nodes from node_list by weighted random draw (without replacement).
- *   - We apply a Fisher-Yates shuffle to that subset, just like random does.
- *   - Build the final path = [0, chosen_subset..., 1].
- *   - Sum latency, if better than the stored best, update.
+ *   - Picks nb_selected_nodes ∈ [ctx->min_hops..ctx->max_hops].
+ *   - Clamps it by candidate_count = (ctx->num_nodes - 2).
+ *   - Builds a node_list of all possible intermediate nodes = [2..(num_nodes-1)].
+ *   - Computes a node-level pheromone: node_pheromone[i] = sum of pheromones[i*n + k] for k in [0..n-1].
+ *   - Selects nb_selected_nodes from node_list by weighted random draw (without replacement).
+ *   - Applies a Fisher-Yates shuffle to that subset, just like random does.
+ *   - Builds the final path = [0, chosen_subset..., 1].
+ *   - Sums latency, if better than the stored best, updates.
  */
 
  #include <stdio.h>
@@ -45,7 +45,7 @@
  
  /*
   * aco_v1_init: remains the same as before (or minimal update).
-  * For demonstration, we only ensure it's not interfering with path selection logic here.
+  * For demonstration, ensures it's not interfering with path selection logic here.
   */
  int aco_v1_init(AntNetContext* ctx)
  {
@@ -136,7 +136,7 @@
   *   - shuffles them (Fisher-Yates),
   *   - forms path [0..subset..1], sums cost,
   *   - if better => store in ctx->aco_best_*.
-  *   We do only 1 path per iteration to mimic random_search_path logic exactly.
+  *   Only 1 path per iteration to mimic random_search_path logic exactly.
   */
  int aco_v1_run_iteration(AntNetContext* ctx)
  {
@@ -183,7 +183,7 @@
          }
      }
  
-     /* Build an array node_weight[i_in_node_list], computed as sum of pheromones over all edges from i -> k. */
+     /* Build an array node_weight[i_in_node_list], computed as sum of pheromones over all edges from i->k. */
      float* node_weight = (float*)malloc((size_t)candidate_count * sizeof(float));
      if (!node_weight) {
          free(node_list);
@@ -204,10 +204,10 @@
              sum_pher = 1e-6f; /* avoid zero or negative */
          }
          node_weight[c] = sum_pher;
-         total_weight += sum_pher;
+         total_weight   += sum_pher;
      }
  
-     /* Now pick nb_selected_nodes by a standard "weighted draw without replacement" approach. */
+     /* Pick nb_selected_nodes by a "weighted draw without replacement" approach. */
      int* chosen_nodes = (int*)malloc((size_t)nb_selected_nodes * sizeof(int));
      if (!chosen_nodes) {
          free(node_weight);
@@ -215,13 +215,12 @@
          return ERR_MEMORY_ALLOCATION;
      }
  
-     /* We'll do a repeated "roulette wheel" selection, removing the chosen node each time. */
+     /* Repeated "roulette wheel" selection, removing the chosen node each time. */
      int chosen_count = 0;
      int remain = candidate_count;
  
      for (int pick = 0; pick < nb_selected_nodes; pick++) {
          if (remain <= 0 || total_weight <= 1e-9f) {
-             /* no more picks possible */
              break;
          }
          float r = (float)rand() / (float)RAND_MAX;
@@ -243,14 +242,14 @@
  
          /* remove from arrays: swap last -> chosen_index */
          total_weight -= node_weight[chosen_index];
-         node_list[chosen_index] = node_list[remain - 1];
+         node_list[chosen_index]   = node_list[remain - 1];
          node_weight[chosen_index] = node_weight[remain - 1];
          remain--;
      }
  
-     /* If we didn't pick as many as intended, oh well. (like random algo if there's a mismatch) */
+     /* If not as many picked as intended, it proceeds anyway (like random). */
  
-     /* Fisher-Yates shuffle on chosen_nodes to replicate random's final order. */
+     /* Fisher-Yates shuffle to replicate random's final order. */
      for (int i = chosen_count - 1; i > 0; i--) {
          int j = rand() % (i + 1);
          int tmp = chosen_nodes[i];
@@ -273,9 +272,10 @@
          new_path[i + 1] = chosen_nodes[i];
      }
      new_path[new_path_length - 1] = 1;
+ 
      free(chosen_nodes);
  
-     /* sum cost, check for overflow */
+     /* Sum cost, check for overflow */
      int cost_sum = 0;
      for (int k = 0; k < new_path_length; k++) {
          int node_id = new_path[k];
@@ -299,13 +299,28 @@
          }
      }
  
+     /* Evaporate and reinforce pheromones for the edges in the new path */
+     for (int i = 0; i < new_path_length - 1; i++) {
+         int from = new_path[i];
+         int to   = new_path[i + 1];
+         int idx  = from * n + to;
+ 
+         ctx->aco_v1.pheromones[idx] *= (1.0f - ctx->aco_v1.evaporation);
+         ctx->aco_v1.pheromones[idx] += ctx->aco_v1.Q / (float)cost_sum;
+         if (ctx->aco_v1.pheromones[idx] < 1e-6f) {
+             ctx->aco_v1.pheromones[idx] = 1e-6f;
+         }
+     }
+ 
+     printf("[DEBUG][ACO] Reinforced %d-hop path, cost=%d\n", new_path_length - 2, cost_sum);
+ 
      free(new_path);
  
      return ERR_SUCCESS;
  }
  
  /*
-  * aco_v1_get_best_path: same as typical; copy best to out_* fields.
+  * aco_v1_get_best_path: same as typical; copies best to out_* fields.
   */
  int aco_v1_get_best_path(
      AntNetContext* ctx,
@@ -331,8 +346,8 @@
  }
  
  /*
-  * aco_v1_search_path: just calls aco_v1_get_best_path.  No ants, no extra logic,
-  * preserving the function signature.  This matches how random_algo does get_best_path.
+  * aco_v1_search_path: just calls aco_v1_get_best_path. No ants, no extra logic,
+  * preserving the function signature. Matches how random_algo does get_best_path.
   */
  int aco_v1_search_path(
      AntNetContext* ctx,

@@ -148,7 +148,7 @@
  #endif
              return ERR_ARRAY_TOO_SMALL;
          }
-         memcpy(out_nodes, mock_nodes, length * sizeof(int));
+         memcpy(out_nodes, mock_nodes, length * sizeof(mock_nodes[0]));
          *out_path_len = length;
          *out_total_latency = 42 + ctx->iteration;
      }
@@ -328,5 +328,40 @@
  #endif
  
      return ERR_SUCCESS;
+ }
+ 
+ /*
+  * antnet_get_pheromone_matrix: returns the entire pheromone matrix, thread-safe.
+  * It copies up to n*n floats into 'out', where n = ctx->aco_v1.pheromone_size.
+  * Returns (n*n) on success, or negative error code on failure.
+  */
+ int antnet_get_pheromone_matrix(int context_id, float* out, int max_count)
+ {
+     AntNetContext* ctx = get_context_by_id(context_id);
+     if (!ctx) return ERR_INVALID_CONTEXT;
+ 
+ #ifndef _WIN32
+     pthread_mutex_lock(&ctx->lock);
+ #endif
+     if (!ctx->aco_v1.pheromones || ctx->aco_v1.pheromone_size <= 0) {
+ #ifndef _WIN32
+         pthread_mutex_unlock(&ctx->lock);
+ #endif
+         return ERR_NO_TOPOLOGY;
+     }
+     int n = ctx->aco_v1.pheromone_size;
+     int count = n * n;
+     if (max_count < count) {
+ #ifndef _WIN32
+         pthread_mutex_unlock(&ctx->lock);
+ #endif
+         return ERR_ARRAY_TOO_SMALL;
+     }
+     memcpy(out, ctx->aco_v1.pheromones, sizeof(float) * count);
+ 
+ #ifndef _WIN32
+     pthread_mutex_unlock(&ctx->lock);
+ #endif
+     return count;
  }
  

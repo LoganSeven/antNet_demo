@@ -5,13 +5,16 @@ It delegates topology structure to HopMapManager and focuses on Qt-based renderi
 """
 
 import random
-from qtpy.QtWidgets import QGraphicsScene
+from qtpy.QtWidgets import QGraphicsScene, QGraphicsPixmapItem
 from qtpy.QtCore import Qt
 from .node_item import NodeItem
 from .edge_item import EdgeItem
 
 from gui.consts.gui_consts import ALGO_COLORS
 from gui.managers.hop_map_manager import HopMapManager
+
+# For the heatmap background:
+from .heatmap_generator import generate_heatmap
 
 class GraphScene(QGraphicsScene):
     """
@@ -36,6 +39,9 @@ class GraphScene(QGraphicsScene):
 
         # Optional list of static edges (e.g. create_default_edges)
         self.static_edges = []
+
+        # Optional heatmap item for background
+        self._heatmap_item = None
 
     def init_scene_with_nodes(self, total_nodes: int):
         """
@@ -196,3 +202,57 @@ class GraphScene(QGraphicsScene):
                 edge = EdgeItem(x1, y1, x2, y2, color=pen_color, pen_width=3)
                 self.addItem(edge)
                 self.best_path_edges.append(edge)
+
+    def update_heatmap(self, pheromone_matrix):
+        """
+        Converts the given pheromone matrix into a QPixmap and displays it as
+        a background item behind all nodes and edges. This uses generate_heatmap
+        from heatmap_generator.py, rendering one square under each node.
+        """
+        if not pheromone_matrix:
+            if self._heatmap_item:
+                self.removeItem(self._heatmap_item)
+                self._heatmap_item = None
+            return
+
+        node_positions = self._ordered_node_positions()
+
+        pixmap = generate_heatmap(
+            pheromone_matrix,
+            node_positions=node_positions,
+            size_factor=1.25
+        )
+        if pixmap.isNull():
+            return
+
+        if self._heatmap_item:
+            try:
+                self.removeItem(self._heatmap_item)
+            except RuntimeError:
+                pass
+            self._heatmap_item = None
+
+        self._heatmap_item = QGraphicsPixmapItem(pixmap)
+        self._heatmap_item.setZValue(-9999)
+        self.addItem(self._heatmap_item)
+
+    def _ordered_node_positions(self):
+        """
+        Returns a list 'pos' where pos[i] = (x, y) of node with id i.
+        Length = (max_node_id + 1). Missing nodes yield (0.0, 0.0).
+        """
+        all_nodes = []
+        if self.manager.start_node_data:
+            all_nodes.append(self.manager.start_node_data)
+        all_nodes.extend(self.manager.hop_nodes_data)
+        if self.manager.end_node_data:
+            all_nodes.append(self.manager.end_node_data)
+
+        if not all_nodes:
+            return []
+
+        max_id = max(nd["node_id"] for nd in all_nodes)
+        positions = [(0.0, 0.0)] * (max_id + 1)
+        for nd in all_nodes:
+            positions[nd["node_id"]] = (nd["x"], nd["y"])
+        return positions

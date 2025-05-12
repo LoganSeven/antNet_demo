@@ -1,7 +1,12 @@
 # src/python/core/worker.py
+"""
+Worker: handles backend C operations asynchronously in a separate thread.
+Can be initialized either from an INI config file (preferred for consistency),
+or from a provided AppConfig dictionary.
+"""
 
 import time
-from threading import Event
+from threading import Event, Lock
 from qtpy.QtCore import QObject
 
 from core.callback_adapter import QCCallbackToSignal
@@ -18,6 +23,8 @@ class Worker(QObject):
     def __init__(self, from_config: str | None = None, app_config: AppConfig | None = None):
         super().__init__()
         self._stop_event = Event()
+        self._ctx_lock = Lock()  # ensures safe usage of get_pheromone_matrix if needed
+
         self.callback_adapter = QCCallbackToSignal()
 
         # Initialize the backend depending on init mode
@@ -45,14 +52,25 @@ class Worker(QObject):
         """
         Main loop for backend processing. Calls the backend to perform one
         iteration of each algorithm (ACO, random, brute) and emits results.
+        Also retrieves the pheromone matrix under lock and can broadcast or store it.
         """
         while not self._stop_event.is_set():
-            time.sleep(1)
-
+            time.sleep(0)
             result_dict = self.backend.run_all_solvers()
 
+            # Retrieve pheromones under lock
+            with self._ctx_lock:
+                try:
+                    pheromones = self.backend.get_pheromone_matrix()
+                except ValueError as e:
+                    pheromones = []  # fallback if there's no topology or other errors
+
+            # Emit best paths
             self.callback_adapter.on_best_path_callback(result_dict)
             self.callback_adapter.on_iteration_callback()
+
+            # NEW: emit the pheromone matrix to the GUI
+            self.callback_adapter.on_pheromone_matrix_callback(pheromones)
 
     def stop(self):
         """

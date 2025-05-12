@@ -161,6 +161,7 @@ class MainWindow(QMainWindow):
                 lambda path_info, idx=idx: self.update_best_path(idx, path_info)
             )
             adapter.signal_iteration_done.connect(self.on_iteration_done)
+            adapter.signal_pheromone_matrix.connect(self.on_pheromone_matrix)
 
     def showEvent(self, event):
         if self._first_show:
@@ -245,3 +246,11 @@ class MainWindow(QMainWindow):
         """
         topology_data = self.graph_canvas.scene.export_graph_topology()
         self.core_manager.update_topology(topology_data)
+
+    def on_pheromone_matrix(self, matrix: list[float]):
+        """
+        Called whenever Worker emits new pheromone data.
+        Pass it to the scene so it can redraw the heatmap behind the nodes.
+        """
+        print(f"[DEBUG] on_pheromone_matrix called with size={len(matrix)}")
+        self.graph_canvas.scene.update_heatmap(matrix)

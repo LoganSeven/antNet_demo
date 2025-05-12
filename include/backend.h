@@ -107,6 +107,14 @@
   */
  int antnet_get_config(int context_id, AppConfig* out);
  
+ /*
+  * antnet_get_pheromone_matrix: thread-safe retrieval of the entire pheromone
+  * matrix of size n*n, where n = ctx->aco_v1.pheromone_size. Writes up to
+  * max_count floats into 'out'. Returns the number of floats (n*n) on success,
+  * or negative on error.
+  */
+ int antnet_get_pheromone_matrix(int context_id, float* out, int max_count);
+ 
  #ifdef __cplusplus
  }
  #endif

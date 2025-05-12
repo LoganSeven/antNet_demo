@@ -215,6 +215,21 @@ class AntNetWrapper:
         else:
             raise RuntimeError(f"run_all_solvers returned unexpected code {rc}")
 
+    def get_pheromone_matrix(self) -> list[float]:
+        """
+        get_pheromone_matrix: retrieves the entire pheromone matrix as a flat float list.
+        size = n*n, where n = aco_v1.pheromone_size in C.
+        Raises ValueError if an error occurs (negative return code).
+        """
+        if self.context_id is None:
+            raise ValueError("No valid context_id to get pheromone matrix.")
+        size = 1024 * 1024  # safe upper bound
+        buf = ffi.new("float[]", size)
+        rc = lib.antnet_get_pheromone_matrix(self.context_id, buf, size)
+        if rc < 0:
+            raise ValueError(f"get_pheromone_matrix failed with code {rc}")
+        return [buf[i] for i in range(rc)]
+
     def shutdown(self):
         if self.context_id is not None:
             rc = lib.antnet_shutdown(self.context_id)

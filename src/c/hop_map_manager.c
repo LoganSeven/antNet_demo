@@ -201,16 +201,60 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
 
         if (!success) {
             /* Fallback if we never found a non-overlapping spot after max_tries */
-            /* Place at a random corner */
+            /* Place near corners with small local tries to avoid overlap */
             float corners[4][2] = {
                 { margin, margin },
                 { width - margin, margin },
                 { margin, height - margin },
                 { width - margin, height - margin }
             };
-            int cidx = rand() % 4;
-            x_final = corners[cidx][0];
-            y_final = corners[cidx][1];
+            /* Shuffle corner indices for more variability */
+            int corner_indices[4] = {0, 1, 2, 3};
+            for (int c = 0; c < 4; c++) {
+                int swap_idx = c + rand() % (4 - c);
+                int tmp = corner_indices[c];
+                corner_indices[c] = corner_indices[swap_idx];
+                corner_indices[swap_idx] = tmp;
+            }
+
+            int corner_placed = 0;
+            float required_spacing_sq = (radius * 2.0f + 30.0f) * (radius * 2.0f + 30.0f);
+            for (int c_idx = 0; c_idx < 4 && !corner_placed; c_idx++) {
+                int idx = corner_indices[c_idx];
+                float cx = corners[idx][0];
+                float cy = corners[idx][1];
+
+                /* Try up to 10 small offsets around the corner */
+                for (int attempt = 0; attempt < 10; attempt++) {
+                    float ox = cx + rand_uniform(-40.0f, 40.0f);
+                    float oy = cy + rand_uniform(-40.0f, 40.0f);
+
+                    int ok = 1;
+                    for (size_t p = 0; p < placed_count; p++) {
+                        float dx = placed_x[p] - ox;
+                        float dy = placed_y[p] - oy;
+                        if ((dx*dx + dy*dy) < required_spacing_sq) {
+                            ok = 0;
+                            break;
+                        }
+                    }
+                    if (ok) {
+                        x_final = ox;
+                        y_final = oy;
+                        corner_placed = 1;
+                        success = 1;
+                        break;
+                    }
+                }
+            }
+
+            if (!corner_placed) {
+                /* If all else fails, place forcibly at the first corner (may cause overlap) */
+                int idx = corner_indices[0];
+                x_final = corners[idx][0];
+                y_final = corners[idx][1];
+                success = 1;
+            }
         }
 
         mgr->hop_nodes[i].x = x_final;

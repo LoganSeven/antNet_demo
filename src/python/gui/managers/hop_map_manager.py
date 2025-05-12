@@ -118,7 +118,6 @@ class HopMapManager:
         to reduce overlapping.
         """
         max_tries = 100
-        # Increase spacing from (radius * 2 + 20) to something bigger:
         required_spacing_sq = (radius * 2 + 30) ** 2
 
         existing_positions = []
@@ -133,12 +132,10 @@ class HopMapManager:
         x_final = width / 2.0
         y_final = height / 2.0
 
+        # First attempt: random uniform tries
         for _ in range(max_tries):
-            # Uniform attempt
             x = random.uniform(margin, width - margin)
             y = random.uniform(margin, height - margin)
-
-            # Check spacing from other nodes
             if all((ox - x)**2 + (oy - y)**2 >= required_spacing_sq for ox, oy in existing_positions):
                 x_final = x
                 y_final = y
@@ -147,14 +144,35 @@ class HopMapManager:
 
         if not placed:
             # Fallback if we never found a non-overlapping spot
-            # Could place the node at a random corner for variety:
+            # Attempt corners with small offsets
             corners = [
                 (margin, margin),
                 (width - margin, margin),
                 (margin, height - margin),
                 (width - margin, height - margin),
             ]
-            x_final, y_final = random.choice(corners)
+            corner_indices = [0, 1, 2, 3]
+            random.shuffle(corner_indices)
+
+            corner_placed = False
+            for idx in corner_indices:
+                cx, cy = corners[idx]
+                for _ in range(10):
+                    ox = cx + random.uniform(-40.0, 40.0)
+                    oy = cy + random.uniform(-40.0, 40.0)
+                    if all((ox2 - ox)**2 + (oy2 - oy)**2 >= required_spacing_sq
+                           for ox2, oy2 in existing_positions):
+                        x_final = ox
+                        y_final = oy
+                        corner_placed = True
+                        placed = True
+                        break
+                if corner_placed:
+                    break
+
+            if not corner_placed:
+                # If still not found, force place at the first corner (may overlap)
+                x_final, y_final = corners[corner_indices[0]]
 
         return {
             "node_id": node_id,
