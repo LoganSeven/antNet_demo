@@ -67,6 +67,18 @@ typedef struct {
     char __size[4];
 } pthread_barrierattr_t;
 typedef struct {
+    int *adjacency;
+    int adjacency_size;
+    float *pheromones;
+    int pheromone_size;
+    float alpha;
+    float beta;
+    float evaporation;
+    float Q;
+    int num_ants;
+    int is_initialized;
+} AcoV1State;
+typedef struct {
     int node_count;
     int min_hops;
     int max_hops;
@@ -84,6 +96,10 @@ typedef struct {
     int brute_best_length;
     int brute_best_latency;
     BruteForceState brute_state;
+    int aco_best_nodes[1024];
+    int aco_best_length;
+    int aco_best_latency;
+    AcoV1State aco_v1;
 } AntNetContext;
 typedef struct {
     pthread_mutex_t lock;
@@ -103,6 +119,7 @@ int antnet_shutdown(int context_id);
 int antnet_get_best_path(int context_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);
 int antnet_run_all_solvers(int context_id, int *out_nodes_aco, int max_size_aco, int *out_len_aco, int *out_latency_aco, int *out_nodes_random, int max_size_random, int *out_len_random, int *out_latency_random, int *out_nodes_brute, int max_size_brute, int *out_len_brute, int *out_latency_brute);
 int antnet_init_from_config(const char *config_path);
+int antnet_get_config(int context_id, AppConfig *out);
 int antnet_update_topology(int context_id, const NodeData *nodes, int num_nodes, const EdgeData *edges, int num_edges);
 int random_search_path(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);
 int brute_force_search_step(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);

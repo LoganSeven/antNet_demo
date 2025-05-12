@@ -1,5 +1,4 @@
 # src/python/gui/managers/hop_map_manager.py
-
 """
 Manages creation, deletion, and management of all hop nodes.
 Centralizes latency handling and topological data (edges).
@@ -97,8 +96,13 @@ class HopMapManager:
         placed_hops = []
         for i in range(hop_count):
             node_id = i + 2
-            hop_data = self._create_random_hop(node_id=node_id, radius=radius,
-                                               margin=margin, width=width, height=height)
+            hop_data = self._create_random_hop(
+                node_id=node_id, 
+                radius=radius,
+                margin=margin, 
+                width=width, 
+                height=height
+            )
             placed_hops.append(hop_data)
         self.hop_nodes_data.extend(placed_hops)
 
@@ -110,10 +114,12 @@ class HopMapManager:
         """
         Finds a random (x, y) that does not overlap with existing hop nodes
         or the start/end nodes. Returns a node data dict.
+        This version uses uniform distribution and slightly stricter spacing
+        to reduce overlapping.
         """
-        # For naive random placement
         max_tries = 100
-        spacing = (radius * 2 + 20) ** 2  # squared distance
+        # Increase spacing from (radius * 2 + 20) to something bigger:
+        required_spacing_sq = (radius * 2 + 30) ** 2
 
         existing_positions = []
         if self.start_node_data:
@@ -123,30 +129,37 @@ class HopMapManager:
         for h in self.hop_nodes_data:
             existing_positions.append((h["x"], h["y"]))
 
+        placed = False
+        x_final = width / 2.0
+        y_final = height / 2.0
+
         for _ in range(max_tries):
-            # Gaussian attempt around center
-            x = random.gauss(width / 2.0, width / 6.0)
-            y = random.gauss(height / 2.0, height / 6.0)
-            x = max(margin, min(x, width - margin))
-            y = max(margin, min(y, height - margin))
+            # Uniform attempt
+            x = random.uniform(margin, width - margin)
+            y = random.uniform(margin, height - margin)
 
             # Check spacing from other nodes
-            if all((ox - x)**2 + (oy - y)**2 >= spacing for ox, oy in existing_positions):
-                return {
-                    "node_id": node_id,
-                    "x": x,
-                    "y": y,
-                    "radius": radius,
-                    "color": HOP_NODE_COLOR,
-                    "label": f"hop #{node_id - 2}",
-                    "delay_ms": random.randint(10, 50)
-                }
+            if all((ox - x)**2 + (oy - y)**2 >= required_spacing_sq for ox, oy in existing_positions):
+                x_final = x
+                y_final = y
+                placed = True
+                break
 
-        # Fallback (center)
+        if not placed:
+            # Fallback if we never found a non-overlapping spot
+            # Could place the node at a random corner for variety:
+            corners = [
+                (margin, margin),
+                (width - margin, margin),
+                (margin, height - margin),
+                (width - margin, height - margin),
+            ]
+            x_final, y_final = random.choice(corners)
+
         return {
             "node_id": node_id,
-            "x": width / 2.0,
-            "y": height / 2.0,
+            "x": x_final,
+            "y": y_final,
             "radius": radius,
             "color": HOP_NODE_COLOR,
             "label": f"hop #{node_id - 2}",
@@ -214,7 +227,7 @@ class HopMapManager:
 
         return {
             "nodes": nodes,
-            "edges": list(self.edges_data)  # shallow copy is fine
+            "edges": list(self.edges_data)
         }
 
     def add_hops(self, count: int):
@@ -223,7 +236,6 @@ class HopMapManager:
         does NOT reset start/end nodes or existing edges.
         Returns the list of newly-created hop dicts.
         """
-        # Basic geometry placeholders, reuse same logic as in _create_random_hop()
         width = 1000.0
         height = 600.0
         margin = 50.0

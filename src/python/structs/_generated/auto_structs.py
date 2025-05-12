@@ -71,3 +71,7 @@ class AntNetContext(TypedDict):
     brute_best_length: int
     brute_best_latency: int
     brute_state: Any
+    aco_best_nodes: int
+    aco_best_length: int
+    aco_best_latency: int
+    aco_v1: Any

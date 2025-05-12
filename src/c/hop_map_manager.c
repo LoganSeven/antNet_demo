@@ -1,4 +1,4 @@
-//src/c/hop_map_manager.c
+// src/c/hop_map_manager.c
 #include "../../include/hop_map_manager.h"
 #include <stdlib.h>
 #include <string.h>
@@ -15,14 +15,15 @@ static float clampf(float val, float minval, float maxval) {
     return (val < minval) ? minval : (val > maxval ? maxval : val);
 }
 
+/* We no longer need this for uniform approach, but keep if needed for fallback:
 static float rand_gauss(float mean, float stddev) {
-    /* Using Box-Muller transform for approximate Gaussian random */
     float u1 = (float)rand() / (float)(RAND_MAX);
     float u2 = (float)rand() / (float)(RAND_MAX);
     float r  = sqrtf(-2.0f * logf(u1)) * stddev;
     float theta = 2.0f * 3.14159265f * u2;
     return mean + r * cosf(theta);
 }
+*/
 
 HopMapManager* hop_map_manager_create() {
     HopMapManager *mgr = (HopMapManager*)malloc(sizeof(HopMapManager));
@@ -41,7 +42,6 @@ HopMapManager* hop_map_manager_create() {
     mgr->edges      = NULL;
     mgr->edge_count = 0;
 
-    /* Optionally seed the RNG once per manager instance if not done globally */
     srand((unsigned int)time(NULL));
 
     return mgr;
@@ -60,6 +60,47 @@ void hop_map_manager_destroy(HopMapManager *mgr) {
     if (mgr->edges)      free(mgr->edges);
 
     free(mgr);
+}
+
+static float rand_uniform(float minval, float maxval) {
+    float r = (float)rand() / (float)(RAND_MAX);
+    return minval + r * (maxval - minval);
+}
+
+static int try_place_node_uniform(
+    float *out_x, float *out_y,
+    float margin, float width, float height,
+    int radius,
+    float *existing_x, float *existing_y,
+    size_t existing_count
+) {
+    /*
+     * Attempts to find a random uniform position for a node
+     * that does not overlap with existing positions. Returns 1 if placed, 0 if fail.
+     */
+    int max_tries = 100;
+    float required_spacing_sq = (radius * 2.0f + 30.0f) * (radius * 2.0f + 30.0f);
+
+    for (int t = 0; t < max_tries; t++) {
+        float x = rand_uniform(margin, width - margin);
+        float y = rand_uniform(margin, height - margin);
+
+        int ok = 1;
+        for (size_t i = 0; i < existing_count; i++) {
+            float dx = existing_x[i] - x;
+            float dy = existing_y[i] - y;
+            if ((dx*dx + dy*dy) < required_spacing_sq) {
+                ok = 0;
+                break;
+            }
+        }
+        if (ok) {
+            *out_x = x;
+            *out_y = y;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
@@ -86,10 +127,9 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
 #ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
 #endif
-        return; /* security: out of memory handling */
+        return; /* out of memory handling */
     }
 
-    /* Basic geometry placeholders as in the Python version */
     float width  = 1000.0f;
     float height = 600.0f;
     float margin = 50.0f;
@@ -113,72 +153,89 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
 
     /* Hop nodes */
     mgr->hop_count = (size_t)(total_nodes - 2);
-    mgr->hop_nodes = (NodeData*)malloc(sizeof(NodeData) * mgr->hop_count);
-    if (!mgr->hop_nodes) {
+    if (mgr->hop_count > 0) {
+        mgr->hop_nodes = (NodeData*)malloc(sizeof(NodeData) * mgr->hop_count);
+        if (!mgr->hop_nodes) {
 #ifndef _WIN32
-        pthread_mutex_unlock(&mgr->lock);
+            pthread_mutex_unlock(&mgr->lock);
 #endif
-        return;
+            return;
+        }
     }
 
-    float spacing_sq = (radius * 2.0f + 20.0f)*(radius * 2.0f + 20.0f);
+    /* Collect existing positions in arrays for quick checks: start + end at first */
+    float *placed_x = (float*)malloc(sizeof(float) * (mgr->hop_count + 2));
+    float *placed_y = (float*)malloc(sizeof(float) * (mgr->hop_count + 2));
+    size_t placed_count = 0;
+    if (placed_x && placed_y) {
+        placed_x[placed_count] = mgr->start_node->x;
+        placed_y[placed_count] = mgr->start_node->y;
+        placed_count++;
+        placed_x[placed_count] = mgr->end_node->x;
+        placed_y[placed_count] = mgr->end_node->y;
+        placed_count++;
+    }
+
     for (size_t i = 0; i < mgr->hop_count; i++) {
-        mgr->hop_nodes[i].node_id = (int)(i + 2);
-        mgr->hop_nodes[i].radius  = radius;
-        mgr->hop_nodes[i].delay_ms = (rand() % 41) + 10; /* random 10..50 */
+        mgr->hop_nodes[i].node_id  = (int)(i + 2);
+        mgr->hop_nodes[i].radius   = radius;
+        mgr->hop_nodes[i].delay_ms = (rand() % 41) + 10;
 
-        /* Attempt random placement */
-        int max_tries = 100;
-        int placed = 0;
-        for (int t = 0; t < max_tries; t++) {
-            float x = rand_gauss(width / 2.0f, width / 6.0f);
-            float y = rand_gauss(height / 2.0f, height / 6.0f);
+        float x_final = width / 2.0f;
+        float y_final = height / 2.0f;
 
-            x = clampf(x, margin, width - margin);
-            y = clampf(y, margin, height - margin);
-
-            /* check spacing from start/end/hops placed so far */
-            int ok = 1;
+        int success = 0;
+        if (placed_x && placed_y) {
+            /* Attempt uniform random placement */
+            if (try_place_node_uniform(
+                    &x_final, &y_final,
+                    margin, width, height,
+                    radius,
+                    placed_x, placed_y,
+                    placed_count
+                ))
             {
-                float dx = mgr->start_node->x - x;
-                float dy = mgr->start_node->y - y;
-                if ((dx*dx + dy*dy) < spacing_sq) ok = 0;
-            }
-            if (ok) {
-                float dx = mgr->end_node->x - x;
-                float dy = mgr->end_node->y - y;
-                if ((dx*dx + dy*dy) < spacing_sq) ok = 0;
-            }
-            if (ok) {
-                for (size_t j = 0; j < i; j++) {
-                    float dx = mgr->hop_nodes[j].x - x;
-                    float dy = mgr->hop_nodes[j].y - y;
-                    if ((dx*dx + dy*dy) < spacing_sq) {
-                        ok = 0;
-                        break;
-                    }
-                }
-            }
-
-            if (ok) {
-                mgr->hop_nodes[i].x = x;
-                mgr->hop_nodes[i].y = y;
-                placed = 1;
-                break;
+                success = 1;
             }
         }
 
-        if (!placed) {
-            /* fallback center */
-            mgr->hop_nodes[i].x = width / 2.0f;
-            mgr->hop_nodes[i].y = height / 2.0f;
+        if (!success) {
+            /* Fallback if we never found a non-overlapping spot after max_tries */
+            /* Place at a random corner */
+            float corners[4][2] = {
+                { margin, margin },
+                { width - margin, margin },
+                { margin, height - margin },
+                { width - margin, height - margin }
+            };
+            int cidx = rand() % 4;
+            x_final = corners[cidx][0];
+            y_final = corners[cidx][1];
+        }
+
+        mgr->hop_nodes[i].x = x_final;
+        mgr->hop_nodes[i].y = y_final;
+
+        /* If we successfully have placed_x/placed_y arrays, record this new position */
+        if (placed_x && placed_y) {
+            placed_x[placed_count] = x_final;
+            placed_y[placed_count] = y_final;
+            placed_count++;
         }
     }
+
+    if (placed_x) free(placed_x);
+    if (placed_y) free(placed_y);
 
 #ifndef _WIN32
     pthread_mutex_unlock(&mgr->lock);
 #endif
 }
+
+/* 
+ * The rest (create_default_edges, hop_map_manager_export_topology, etc.)
+ * remains unchanged from your original code. Shown for completeness:
+ */
 
 static float dist_sq(float ax, float ay, float bx, float by) {
     float dx = ax - bx;
@@ -193,7 +250,6 @@ void hop_map_manager_create_default_edges(HopMapManager *mgr) {
     pthread_mutex_lock(&mgr->lock);
 #endif
 
-    /* clear old edges */
     if (mgr->edges) {
         free(mgr->edges);
         mgr->edges = NULL;
@@ -207,7 +263,6 @@ void hop_map_manager_create_default_edges(HopMapManager *mgr) {
         return;
     }
     if (!mgr->hop_nodes || mgr->hop_count == 0) {
-        /* can simply connect start->end */
         mgr->edges = (EdgeData*)malloc(sizeof(EdgeData));
         if (mgr->edges) {
             mgr->edge_count = 1;
@@ -220,35 +275,31 @@ void hop_map_manager_create_default_edges(HopMapManager *mgr) {
         return;
     }
 
-    /* up to 3 nearest hops in sequence from start to end */
     size_t interior = (mgr->hop_count < 3) ? mgr->hop_count : 3;
-    int *path_node_ids = (int*)malloc(sizeof(int) * (2 + interior)); /* start + interior + end */
+    int *path_node_ids = (int*)malloc(sizeof(int) * (2 + interior));
     if (!path_node_ids) {
 #ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
 #endif
-        return; /* security: out of memory */
+        return;
     }
 
     path_node_ids[0] = mgr->start_node->node_id;
-    /* gather local array of hop indexes */
-    size_t hop_count_local = mgr->hop_count;
-    int *hop_idx_used = (int*)calloc(hop_count_local, sizeof(int)); /* track used hops */
+    int *hop_idx_used = (int*)calloc(mgr->hop_count, sizeof(int));
     if (!hop_idx_used) {
         free(path_node_ids);
 #ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
 #endif
-        return; /* security: out of memory */
+        return;
     }
 
-    /* pick nearest each time */
     NodeData current = *(mgr->start_node);
     size_t path_index = 1;
     for (size_t step = 0; step < interior; step++) {
         float best_d = 1e12f;
         int best_idx = -1;
-        for (size_t h = 0; h < hop_count_local; h++) {
+        for (size_t h = 0; h < mgr->hop_count; h++) {
             if (hop_idx_used[h]) continue;
             NodeData *cand = &mgr->hop_nodes[h];
             float dsq = dist_sq(current.x, current.y, cand->x, cand->y);
@@ -267,7 +318,6 @@ void hop_map_manager_create_default_edges(HopMapManager *mgr) {
     path_node_ids[path_index++] = mgr->end_node->node_id;
     size_t final_count = path_index;
 
-    /* build edges from these node IDs */
     mgr->edge_count = final_count - 1;
     mgr->edges = (EdgeData*)malloc(sizeof(EdgeData) * mgr->edge_count);
     if (mgr->edges) {
@@ -299,7 +349,6 @@ void hop_map_manager_export_topology(HopMapManager *mgr,
     pthread_mutex_lock(&mgr->lock);
 #endif
 
-    /* Count how many nodes exist (start + end + hops) */
     size_t ncount = 0;
     if (mgr->start_node) ncount++;
     if (mgr->end_node)   ncount++;

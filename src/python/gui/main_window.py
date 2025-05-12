@@ -1,4 +1,9 @@
-#src/python/gui/main_window.py
+# src/python/gui/main_window.py
+"""
+MainWindow sets up the GUI layout, starts the CoreManager (which spins up the Workers),
+and connects signals for solver results to be drawn in the GraphScene.
+"""
+
 from qtpy.QtCore import Qt, QTimer, Signal, QEvent
 from qtpy.QtWidgets import (
     QMainWindow,
@@ -15,8 +20,6 @@ from gui.graph_view.graph_canvas import GraphCanvas
 from gui.control_widget import ControlWidget
 from gui.aco_visu_widget import AcoVisuWidget
 from gui.managers.signal_manager import SignalManager
-
-# Import the solver color constants
 from gui.consts.gui_consts import ALGO_COLORS
 
 class MainWindow(QMainWindow):
@@ -131,13 +134,23 @@ class MainWindow(QMainWindow):
 
         self.signal_manager = SignalManager(self, self.control, self.core_manager)
 
-        # Create a default chain of edges so there's a guaranteed path
+        # Now start the workers (which create contexts in the C backend) from .ini config
+        self.core_manager.start(num_workers=1, from_config="config/settings.ini")
+
+        # Retrieve the backend config to see how many nodes are configured
+        config_data = self.core_manager.workers[0][0].backend.get_config()
+        nb_nodes = config_data["set_nb_nodes"]
+
+        # Initialize the scene with the configured number of nodes
+        self.graph_canvas.scene.init_scene_with_nodes(nb_nodes)
+
+        # Create a default chain of edges after the nodes are created
         self.graph_canvas.scene.create_default_edges()
 
-        # Now start the workers (which create contexts in the C backend):
-        self.core_manager.start(num_workers=1)
+        # (Optional) Render the manager edges for debugging
+        self.graph_canvas.scene.render_manager_edges()
 
-        # Immediately push the topology so each worker sees it before the first iteration:
+        # Immediately push the resulting topology so each worker sees it before the first iteration
         topology_data = self.graph_canvas.scene.export_graph_topology()
         self.core_manager.update_topology(topology_data)
 
@@ -178,7 +191,7 @@ class MainWindow(QMainWindow):
                 data = path_info[algo_key]
                 nodes = data.get("nodes", [])
                 if nodes:
-                    print(f"[DEBUG] {algo_label} path: {nodes}") 
+                    print(f"\033[36m[DEBUG]\033[0m {algo_label} path: {nodes}")
                     latency = data.get("total_latency", 0)
                     previous_latency = self.last_logged_latencies[algo_key]
                     if previous_latency is None or previous_latency != latency:
@@ -186,7 +199,6 @@ class MainWindow(QMainWindow):
                         self.last_logged_latencies[algo_key] = latency
 
         self.graph_canvas.scene.draw_multiple_paths(path_info)
-
 
     def on_iteration_done(self):
         self.iteration_count += 1
@@ -202,9 +214,9 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.MouseButtonPress:
-            if obj in [self.main_splitter.handle(i+1) for i in range(self.main_splitter.count()-1)]:
+            if obj in [self.main_splitter.handle(i + 1) for i in range(self.main_splitter.count() - 1)]:
                 self._is_dragging_splitter_h = True
-            elif obj in [self.sub_splitter.handle(i+1) for i in range(self.sub_splitter.count()-1)]:
+            elif obj in [self.sub_splitter.handle(i + 1) for i in range(self.sub_splitter.count() - 1)]:
                 self._is_dragging_splitter_v = True
 
         elif event.type() == QEvent.MouseButtonRelease:

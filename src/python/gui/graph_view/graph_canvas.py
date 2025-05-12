@@ -1,17 +1,25 @@
 # src/python/gui/graph_view/graph_canvas.py
+"""
+GraphCanvas holds a GraphScene inside a QGraphicsView.
+It does not directly manage node counts; instead, MainWindow or other higher-level
+components call scene.init_scene_with_nodes(...) after reading configuration.
+"""
+
 from qtpy.QtWidgets import QGraphicsView
 from qtpy.QtCore import Qt
 from .graph_scene import GraphScene
 
 class GraphCanvas(QGraphicsView):
     """
-    QGraphicsView that holds a GraphScene. It auto-fits the scene whenever resized.
+    QGraphicsView that holds a GraphScene. The scene manages the HopMapManager.
+    The canvas auto-fits the scene when resized.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # The GraphScene is responsible for managing the HopMapManager internally
-        self.scene = GraphScene(total_nodes=16)
+        # Do NOT specify total_nodes here; the scene will be initialized empty.
+        # Later, main_window calls scene.init_scene_with_nodes(...) with config-based count.
+        self.scene = GraphScene()
         self.setScene(self.scene)
 
     def resizeEvent(self, event):
