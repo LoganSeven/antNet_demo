@@ -5,16 +5,15 @@ It delegates topology structure to HopMapManager and focuses on Qt-based renderi
 """
 
 import random
-from qtpy.QtWidgets import QGraphicsScene, QGraphicsPixmapItem
+from qtpy.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsTextItem
 from qtpy.QtCore import Qt
 from .node_item import NodeItem
 from .edge_item import EdgeItem
 
 from gui.consts.gui_consts import ALGO_COLORS
 from gui.managers.hop_map_manager import HopMapManager
+from gui.graph_view.heatmap_generator import *
 
-# For the heatmap background:
-from .heatmap_generator import generate_heatmap
 
 class GraphScene(QGraphicsScene):
     """
@@ -27,30 +26,32 @@ class GraphScene(QGraphicsScene):
     def __init__(self, width=1000, height=600, parent=None):
         super().__init__(parent)
         self.setSceneRect(0, 0, width, height)
-
         # Source-of-truth for nodes/edges is here:
         self.manager = HopMapManager()
-
         # Keep track of rendered NodeItems
         self._node_items_by_id = {}
-
         # List of rendered edges for solver paths (to remove/redraw them each iteration)
         self.best_path_edges = []
-
-        # Optional list of static edges (e.g. create_default_edges)
+        # Optional list of static edges
         self.static_edges = []
-
-        # Optional heatmap item for background
+        # Optional heatmap item
         self._heatmap_item = None
+        # Offscreen GPU renderer reference (may be None)
+        self._gpu_is_ok = False
+
+    def set_gpu_ok(self, is_ok):
+        """
+        Stores a flag on GPU usable or not
+        otherwise fallback to CPU-based generate_heatmap.
+        """
+        self._gpu_is_ok = is_ok
 
     def init_scene_with_nodes(self, total_nodes: int):
         """
         Initializes the HopMapManager with 'total_nodes' and renders them.
         Call this once you know how many nodes you want (e.g., from .ini config).
         """
-        # Create new map data
         self.manager.initialize_map(total_nodes)
-        # Render them in the scene
         self._render_nodes()
 
     def create_default_edges(self):
@@ -65,7 +66,6 @@ class GraphScene(QGraphicsScene):
         Renders edges from self.manager.edges_data as static lines in the scene.
         This is optional, useful for debugging or displaying a basic chain.
         """
-        # Clear existing static edges from the scene
         for e_item in self.static_edges:
             try:
                 self.removeItem(e_item)
@@ -80,7 +80,7 @@ class GraphScene(QGraphicsScene):
             to_node   = self._node_items_by_id.get(to_id)
 
             if not from_node or not to_node:
-                continue  # Possibly invalid reference
+                continue
 
             x1, y1 = from_node.x, from_node.y
             x2, y2 = to_node.x, to_node.y
@@ -100,13 +100,12 @@ class GraphScene(QGraphicsScene):
         This does NOT create edges – call create_default_edges() or use
         render_manager_edges() for visual edges.
         """
-        # Remove existing items from the scene
         self.best_path_edges.clear()
         self.static_edges.clear()
         self._node_items_by_id.clear()
         self.clear()
 
-        # 1) Render start node
+        # 1) Start node
         if self.manager.start_node_data:
             data = self.manager.start_node_data
             item = NodeItem(
@@ -117,7 +116,7 @@ class GraphScene(QGraphicsScene):
             self.addItem(item)
             self._node_items_by_id[data["node_id"]] = item
 
-        # 2) Render hop nodes
+        # 2) Hop nodes
         for data in self.manager.hop_nodes_data:
             item = NodeItem(
                 x=data["x"], y=data["y"], radius=data["radius"],
@@ -127,7 +126,7 @@ class GraphScene(QGraphicsScene):
             self.addItem(item)
             self._node_items_by_id[data["node_id"]] = item
 
-        # 3) Render end node
+        # 3) End node
         if self.manager.end_node_data:
             data = self.manager.end_node_data
             item = NodeItem(
@@ -158,13 +157,11 @@ class GraphScene(QGraphicsScene):
         If a path is empty or invalid, it is skipped.
         Each path is offset slightly so they don't overlap each other.
         """
-        # Safely remove old path edges
         for e in self.best_path_edges:
             try:
                 self.removeItem(e)
             except RuntimeError:
                 pass
-
         self.best_path_edges.clear()
 
         color_map = {
@@ -188,14 +185,12 @@ class GraphScene(QGraphicsScene):
             ox, oy = offset_map.get(algo, (0, 0))
             pen_color = color_map.get(algo, "#000000")
 
-            # Rebuild node path from known IDs
             seq = []
             for nid in node_ids:
                 node = self._node_items_by_id.get(nid)
                 if node:
                     seq.append(node)
 
-            # Draw lines between consecutive nodes
             for a, b in zip(seq, seq[1:]):
                 x1, y1 = a.x + ox, a.y + oy
                 x2, y2 = b.x + ox, b.y + oy
@@ -206,23 +201,43 @@ class GraphScene(QGraphicsScene):
     def update_heatmap(self, pheromone_matrix):
         """
         Converts the given pheromone matrix into a QPixmap and displays it as
-        a background item behind all nodes and edges. This uses generate_heatmap
-        from heatmap_generator.py, rendering one square under each node.
+        a background item behind all nodes and edges.
+        Tries the GPU renderer first, then falls back to generate_heatmap.
+        Displays 'OPENGL MODE' text if GPU is active.
         """
         if not pheromone_matrix:
-            if self._heatmap_item:
-                self.removeItem(self._heatmap_item)
-                self._heatmap_item = None
             return
 
         node_positions = self._ordered_node_positions()
+        pixmap = None
 
-        pixmap = generate_heatmap(
-            pheromone_matrix,
-            node_positions=node_positions,
-            size_factor=1.25
-        )
-        if pixmap.isNull():
+        # Attempt GPU
+        if self._gpu_is_ok:
+            try:
+                from gui.graph_view.heatmap_generator import generate_heatmap_gl
+                # Use the sceneRect size
+                scene_w = int(self.sceneRect().width())
+                scene_h = int(self.sceneRect().height())
+                pixmap = generate_heatmap_gl(
+                    pheromone_matrix,
+                    node_positions=node_positions,
+                    width=scene_w,
+                    height=scene_h
+                )
+            except Exception as e:
+                print(f"[GraphScene] GPU heatmap rendering failed: {e}")
+                pixmap = None
+
+        # CPU fallback
+        if pixmap is None or pixmap.isNull():
+            from gui.graph_view.heatmap_generator import generate_heatmap
+            pixmap = generate_heatmap(
+                pheromone_matrix,
+                node_positions=node_positions,
+                size_factor=1.25
+            )
+
+        if pixmap is None or pixmap.isNull():
             return
 
         if self._heatmap_item:
@@ -247,10 +262,8 @@ class GraphScene(QGraphicsScene):
         all_nodes.extend(self.manager.hop_nodes_data)
         if self.manager.end_node_data:
             all_nodes.append(self.manager.end_node_data)
-
         if not all_nodes:
             return []
-
         max_id = max(nd["node_id"] for nd in all_nodes)
         positions = [(0.0, 0.0)] * (max_id + 1)
         for nd in all_nodes:

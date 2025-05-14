@@ -75,10 +75,6 @@ int antnet_update_topology(
         memcpy(ctx->nodes, nodes, sizeof(NodeData) * (size_t)num_nodes);
 
         printf("[DEBUG] Nodes updated (%d total):\n", num_nodes);
-        for (int i = 0; i < num_nodes; ++i) {
-            printf("  [DEBUG] Node[%d]: id=%d, delay=%d\n",
-                   i, ctx->nodes[i].node_id, ctx->nodes[i].delay_ms);
-        }
     }
     ctx->num_nodes = num_nodes;
 

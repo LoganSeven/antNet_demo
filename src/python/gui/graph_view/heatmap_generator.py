@@ -6,9 +6,21 @@ mapped from its outgoing pheromone strength.
 This avoids all interpolation and uses pure Qt painting for maximum performance.
 """
 
+import numpy as np  # <-- Added so that generate_heatmap_gl can construct buffers
+
 from qtpy.QtGui import QPixmap, QImage, QPainter, QColor
 from qtpy.QtCore import Qt
+from ffi.backend_api import render_heatmap_rgba
+from PIL import Image
+from io import BytesIO
 
+def rgba_to_qpixmap(rgba_data, width, height):
+    image = Image.frombytes("RGBA", (width, height), rgba_data)
+    image = image.transpose(Image.FLIP_TOP_BOTTOM)
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    qt_img = QImage.fromData(buffer.getvalue(), "PNG")
+    return QPixmap.fromImage(qt_img)
 
 def _jet_color(value: float, vmin: float, vmax: float, alpha: int) -> QColor:
     """
@@ -59,10 +71,10 @@ def generate_heatmap(
     if n * n != len(pheromone_matrix):
         return QPixmap()
 
-    # Compute outgoing pheromone per node using max instead of sum
+    # Compute outgoing pheromone per node using max (excluding self).
     out_vals = [0.0] * n
     for i in range(n):
-        out_vals[i] = max(pheromone_matrix[i * n + j] for j in range(n) if i != j)
+        out_vals[i] = max(pheromone_matrix[i * n + j] for j in range(n) if j != i)
 
     # Normalize range
     non_zero = [v for v in out_vals if v > 0.0]
@@ -102,3 +114,54 @@ def generate_heatmap(
     painter.end()
     print(f"[DEBUG] Squares drawn: {count_drawn}, range=[{vmin:.4f}, {vmax:.4f}]")
     return QPixmap.fromImage(image)
+
+def prepare_heatmap_input(pheromone_matrix, node_positions, width=800, height=600):
+    if not pheromone_matrix or not node_positions:
+        return b"", 0, 0
+
+    n = len(node_positions)
+    if n * n != len(pheromone_matrix):
+        return b"", 0, 0
+
+    # Max outgoing pheromone per node (excluding self)
+    out_vals = [max(pheromone_matrix[i * n + j] for j in range(n) if j != i) for i in range(n)]
+    non_zero = [v for v in out_vals if v > 0.0]
+    if not non_zero:
+        return b"", 0, 0
+
+    # Normalize pheromone values for intensity
+    vmin, vmax = min(non_zero), max(non_zero)
+    if vmax - vmin < 1e-6:
+        vmax = vmin + 1e-6
+    norm_vals = [(v - vmin) / (vmax - vmin) for v in out_vals]
+
+    # Map each (x, y) position from Qt scene coordinates to OpenGL clip space [-1, 1]
+    def to_clip_space(x, y):
+        clip_x = 2.0 * x / width - 1.0
+        clip_y = 1.0 - 2.0 * y / height
+        return clip_x, clip_y
+
+    pts_xy = []
+    for x, y in node_positions:
+        cx, cy = to_clip_space(x, y)
+        pts_xy.extend([cx, cy])
+
+    rgba_data = render_heatmap_rgba(pts_xy, norm_vals, width, height)
+    return rgba_data, width, height
+
+
+
+def generate_heatmap_gl(
+    pheromone_matrix: list[float],
+    node_positions: list[tuple[float, float]],
+    width: int,
+    height: int
+) -> QPixmap:
+    """
+    Uses the backend OpenGL pipeline (via render_heatmap_rgba) to create the heatmap.
+    Converts the result buffer to QPixmap for Qt display.
+    """
+    rgba_data, real_w, real_h = prepare_heatmap_input(pheromone_matrix, node_positions, width, height)
+    if not rgba_data:
+        return QPixmap()
+    return rgba_to_qpixmap(rgba_data, real_w, real_h)

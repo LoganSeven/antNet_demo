@@ -17,8 +17,6 @@ class GraphCanvas(QGraphicsView):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Do NOT specify total_nodes here; the scene will be initialized empty.
-        # Later, main_window calls scene.init_scene_with_nodes(...) with config-based count.
         self.scene = GraphScene()
         self.setScene(self.scene)
 

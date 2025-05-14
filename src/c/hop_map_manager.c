@@ -11,9 +11,9 @@
   Integrate random seeding and advanced placement logic as needed.
 */
 
-static float clampf(float val, float minval, float maxval) {
-    return (val < minval) ? minval : (val > maxval ? maxval : val);
-}
+//static float clampf(float val, float minval, float maxval) {
+//    return (val < minval) ? minval : (val > maxval ? maxval : val);
+//}
 
 /* We no longer need this for uniform approach, but keep if needed for fallback:
 static float rand_gauss(float mean, float stddev) {

@@ -78,6 +78,7 @@ typedef struct {
     int num_ants;
     int is_initialized;
 } AcoV1State;
+typedef struct HeatmapRenderer HeatmapRenderer;
 typedef struct {
     int node_count;
     int min_hops;
@@ -113,6 +114,12 @@ typedef struct {
 
 
 
+HeatmapRenderer *hr_create(int width, int height);
+int hr_render(HeatmapRenderer *hr, const float *pts, const float *strength, size_t n, unsigned char *out_rgba, int width, int height);
+void hr_destroy(HeatmapRenderer *hr);
+int hr_renderer_start(int width, int height);
+int hr_renderer_stop(void);
+int hr_enqueue_render(const float *pts_xy, const float *strength, int n, unsigned char *out_rgba, int width, int height);
 int antnet_initialize(int node_count, int min_hops, int max_hops);
 int antnet_run_iteration(int context_id);
 int antnet_shutdown(int context_id);
@@ -121,6 +128,9 @@ int antnet_run_all_solvers(int context_id, int *out_nodes_aco, int max_size_aco,
 int antnet_init_from_config(const char *config_path);
 int antnet_get_config(int context_id, AppConfig *out);
 int antnet_get_pheromone_matrix(int context_id, float *out, int max_count);
+int antnet_render_heatmap_rgba(const float *pts_xy, const float *strength, int n, unsigned char *out_rgba, int width, int height);
+int antnet_renderer_async_init(int initial_width, int initial_height);
+int antnet_renderer_async_shutdown(void);
 int antnet_update_topology(int context_id, const NodeData *nodes, int num_nodes, const EdgeData *edges, int num_edges);
 int random_search_path(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);
 int brute_force_search_step(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);

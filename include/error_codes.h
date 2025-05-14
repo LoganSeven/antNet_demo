@@ -23,4 +23,6 @@
 #define ERR_INVALID_CONTEXT          -7
 #define ERR_NO_FREE_SLOT             -8
 
+#define ERR_INTERNAL_FAILURE         -9
+
 #endif /* ERROR_CODES_H */

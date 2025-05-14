@@ -1,3 +1,5 @@
+
+
 # src/python/gui/main_window.py
 """
 MainWindow sets up the GUI layout, starts the CoreManager (which spins up the Workers),
@@ -15,12 +17,15 @@ from qtpy.QtWidgets import (
     QSizePolicy
 )
 from qtpy.QtGui import QColor
+
 from core.core_manager import CoreManager
 from gui.graph_view.graph_canvas import GraphCanvas
 from gui.control_widget import ControlWidget
 from gui.aco_visu_widget import AcoVisuWidget
 from gui.managers.signal_manager import SignalManager
 from gui.consts.gui_consts import ALGO_COLORS
+from ffi.backend_api import render_heatmap_rgba, init_async_renderer, shutdown_async_renderer
+
 
 class MainWindow(QMainWindow):
     splitter_horizontal_released = Signal()
@@ -40,12 +45,34 @@ class MainWindow(QMainWindow):
         self.core_manager = CoreManager()
         self.iteration_count = 0
 
-        # Store last logged latencies for each solver to avoid duplicates
         self.last_logged_latencies = {
             "aco": None,
             "random": None,
             "brute": None
         }
+
+        # Initialize the async renderer with a small default size
+        # (it can adapt to bigger sizes on first job).
+        init_async_renderer(width=64, height=64)
+
+        # Attempt a small test for the renderer
+        self.opengl_ok = False
+        try:
+            # 10 fixed (x, y) points and strength values
+            pts_xy = [-0.8, -0.8, -0.5, -0.5, -0.2, -0.2, 0.0, 0.0, 0.2, 0.2,
+                      0.4, 0.4, 0.6, 0.6, 0.8, 0.8, -0.6, 0.6, 0.6, -0.6]
+            strength = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+            w, h = 50, 50
+            out = render_heatmap_rgba(pts_xy, strength, w, h)
+
+            if out and len(out) == w * h * 4:
+                self.opengl_ok = True
+                print("[DEBUG] OpenGL heatmap test succeeded.")
+            else:
+                print("[DEBUG] OpenGL test ran but returned invalid buffer.")
+        except Exception as e:
+            print(f"[DEBUG] OpenGL heatmap test failed: {e}")
 
         # Main zones
         self.zone1 = QWidget()
@@ -127,12 +154,13 @@ class MainWindow(QMainWindow):
         zone3_layout.addWidget(self.control)
         zone3_layout.setStretch(0, 1)
 
-        # Add a button to send the current topology to the backend
         self.button_update_topology = QPushButton("Update Topology", self.zone3)
         self.button_update_topology.clicked.connect(self.on_button_update_topology)
         zone3_layout.addWidget(self.button_update_topology)
 
         self.signal_manager = SignalManager(self, self.control, self.core_manager)
+
+        self.graph_canvas.scene.set_gpu_ok(self.opengl_ok)
 
         # Now start the workers (which create contexts in the C backend) from .ini config
         self.core_manager.start(num_workers=1, from_config="config/settings.ini")
@@ -147,14 +175,18 @@ class MainWindow(QMainWindow):
         # Create a default chain of edges after the nodes are created
         self.graph_canvas.scene.create_default_edges()
 
-        # (Optional) Render the manager edges for debugging
+        # Render manager edges and immediately push full topology to backend
         self.graph_canvas.scene.render_manager_edges()
 
-        # Immediately push the resulting topology so each worker sees it before the first iteration
+        # Auto-inject topology once everything is ready
         topology_data = self.graph_canvas.scene.export_graph_topology()
+        print("[DEBUG] Auto-injecting initial topology to CoreManager...")
         self.core_manager.update_topology(topology_data)
 
-        # Connect core system callbacks
+
+
+
+        # Connect signals from the workers
         adapters = self.core_manager.get_callback_adapters()
         for idx, adapter in enumerate(adapters):
             adapter.signal_best_path_updated.connect(
@@ -182,23 +214,17 @@ class MainWindow(QMainWindow):
         self.sub_splitter.setSizes([sub_height // 2, sub_height // 2])
 
     def update_best_path(self, worker_idx, path_info):
-        """
-        Receives a dict with 'aco', 'random', and 'brute' sub-dicts,
-        each containing 'nodes' and 'total_latency'. Logs the info
-        and draws multiple paths simultaneously, skipping repeated latencies or empty paths.
-        """
         for algo_key, algo_label in [("aco", "ACO"), ("random", "RND"), ("brute", "BF")]:
             if algo_key in path_info:
                 data = path_info[algo_key]
                 nodes = data.get("nodes", [])
                 if nodes:
-                    print(f"\033[36m[DEBUG]\033[0m {algo_label} path: {nodes}")
+                    print(f"[DEBUG] {algo_label} path: {nodes}")
                     latency = data.get("total_latency", 0)
                     previous_latency = self.last_logged_latencies[algo_key]
                     if previous_latency is None or previous_latency != latency:
                         self.aco_visu.addLog(f"{algo_label}: {latency}", ALGO_COLORS[algo_key])
                         self.last_logged_latencies[algo_key] = latency
-
         self.graph_canvas.scene.draw_multiple_paths(path_info)
 
     def on_iteration_done(self):
@@ -207,6 +233,8 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.core_manager.stop()
+        # Shutdown the async renderer
+        shutdown_async_renderer()
         super().closeEvent(event)
 
     def resizeEvent(self, event):
@@ -240,17 +268,13 @@ class MainWindow(QMainWindow):
         super().mouseReleaseEvent(event)
 
     def on_button_update_topology(self):
-        """
-        Triggered by the 'Update Topology' button.
-        Exports the current graph structure from the scene and sends it to the backend.
-        """
+        # Gather the current topology from the scene
         topology_data = self.graph_canvas.scene.export_graph_topology()
+
+        # In real usage, we must push the topology to the worker so that it knows the new node/edge data.
+        print("[DEBUG] on_button_update_topology called; sending to CoreManager...")
         self.core_manager.update_topology(topology_data)
 
     def on_pheromone_matrix(self, matrix: list[float]):
-        """
-        Called whenever Worker emits new pheromone data.
-        Pass it to the scene so it can redraw the heatmap behind the nodes.
-        """
         print(f"[DEBUG] on_pheromone_matrix called with size={len(matrix)}")
         self.graph_canvas.scene.update_heatmap(matrix)

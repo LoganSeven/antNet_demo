@@ -14,7 +14,9 @@
  #include "antnet_network_types.h"
  #include "error_codes.h"
  #include "backend_thread_defs.h"
- #include "antnet_aco_v1_types.h"  /* newly added for AcoV1State */
+ #include "antnet_aco_v1_types.h"
+ #include "heatmap_renderer.h"
+ #include "heatmap_renderer_async.h" /* added for async approach */
  
  #ifdef __cplusplus
  extern "C" {
@@ -25,7 +27,7 @@
   * and algorithm-specific parameters.  The structure is visible to CFFI.
   */
  typedef struct AntNetContext
- {
+ {    
      /* basic topology parameters */
      int node_count;
      int min_hops;
@@ -114,6 +116,44 @@
   * or negative on error.
   */
  int antnet_get_pheromone_matrix(int context_id, float* out, int max_count);
+ 
+ /*
+  * antnet_render_heatmap_rgba
+  *
+  * Renders a heatmap from the given point cloud and pheromone values.
+  * Uses the persistent background renderer in heatmap_renderer_async.c
+  *
+  * Parameters:
+  *   pts_xy     - Array of n (x, y) float pairs in [-1, 1] space (2 * n floats total)
+  *   strength   - Array of n pheromone values ∈ [0..1]
+  *   n          - Number of points
+  *   out_rgba   - Output buffer (width * height * 4) bytes, preallocated
+  *   width      - Width of the output image
+  *   height     - Height of the output image
+  *
+  * Returns:
+  *   ERR_SUCCESS on success, or ERR_INTERNAL_FAILURE on error.
+  */
+ int antnet_render_heatmap_rgba(
+     const float *pts_xy,
+     const float *strength,
+     int n,
+     unsigned char *out_rgba,
+     int width,
+     int height
+ );
+ 
+ /*
+  * antnet_renderer_async_init
+  * Starts the persistent renderer thread. Must be called once on app startup.
+  */
+ int antnet_renderer_async_init(int initial_width, int initial_height);
+ 
+ /*
+  * antnet_renderer_async_shutdown
+  * Stops the persistent renderer thread and cleans up.
+  */
+ int antnet_renderer_async_shutdown(void);
  
  #ifdef __cplusplus
  }

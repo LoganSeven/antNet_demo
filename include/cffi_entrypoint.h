@@ -39,6 +39,10 @@ extern "C" {
 #include "config_manager.h"     // config_load, config_save, ...
 #include "hop_map_manager.h"
 
+/* 5) generators , e.g. heatmap_renderer*/
+#include "heatmap_renderer.h"
+#include "heatmap_renderer_async.h"
+
 #ifdef __cplusplus
 }
 #endif

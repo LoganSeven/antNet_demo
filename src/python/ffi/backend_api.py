@@ -131,6 +131,9 @@ class AntNetWrapper:
             raise RuntimeError(f"run_iteration returned unexpected code {rc}")
 
     def get_best_path_struct(self):
+        """
+        Returns a dict with "nodes" (list[int]) and "total_latency" (int).
+        """
         max_nodes = 1024
         nodes_buf = ffi.new("int[]", max_nodes)
         len_ptr = ffi.new("int*")
@@ -149,20 +152,47 @@ class AntNetWrapper:
 
     def update_topology(self, nodes, edges):
         """
-        Replace node/edge arrays in the backend.
-        NodeData currently exposes only node_id and delay_ms.
+        Replaces node/edge arrays in the backend.
+        NodeData: node_id (int >= 0), delay_ms (int >= 0).
+        EdgeData: from_id (int >= 0), to_id (int >= 0).
+
+        Raises ValueError on invalid arguments or negative return code from C.
+        Raises RuntimeError if C returns unexpected positive code.
         """
-        n, e = len(nodes), len(edges)
+        if self.context_id is None:
+            raise ValueError("Invalid context_id")
+
+        # Convert python objects -> C arrays
+        n = len(nodes)
+        e = len(edges)
+        if n == 0 or e == 0:
+            raise ValueError("Empty node or edge list")
+
         node_arr = ffi.new("NodeData[]", n)
         edge_arr = ffi.new("EdgeData[]", e)
 
         for i, nd in enumerate(nodes):
-            node_arr[i].node_id = nd["node_id"]
-            node_arr[i].delay_ms = nd["delay_ms"]
+            node_id = nd.get("node_id")
+            delay_ms = nd.get("delay_ms")
+            if not isinstance(node_id, int) or node_id < 0:
+                raise ValueError(f"Invalid node_id: {node_id}")
+            if not isinstance(delay_ms, int) or delay_ms < 0:
+                raise ValueError(f"Invalid delay_ms: {delay_ms}")
+            node_arr[i].node_id = node_id
+            node_arr[i].delay_ms = delay_ms
+            node_arr[i].x = 0.0  # not used in backend
+            node_arr[i].y = 0.0
+            node_arr[i].radius = 0
 
         for j, ed in enumerate(edges):
-            edge_arr[j].from_id = ed["from_id"]
-            edge_arr[j].to_id = ed["to_id"]
+            from_id = ed.get("from_id")
+            to_id   = ed.get("to_id")
+            if not isinstance(from_id, int) or from_id < 0:
+                raise ValueError(f"Invalid from_id: {from_id}")
+            if not isinstance(to_id, int) or to_id < 0:
+                raise ValueError(f"Invalid to_id: {to_id}")
+            edge_arr[j].from_id = from_id
+            edge_arr[j].to_id   = to_id
 
         rc = lib.antnet_update_topology(self.context_id, node_arr, n, edge_arr, e)
         if rc == ERR_SUCCESS:
@@ -241,7 +271,73 @@ class AntNetWrapper:
                 raise RuntimeError(f"antnet_shutdown returned unexpected code {rc}")
 
     def __del__(self):
+        """
+        Ensure we release the context when this object is GCed.
+        """
         try:
             self.shutdown()
         except:
             pass
+
+
+# Global state for the async renderer. This ensures we init exactly once.
+_renderer_initialized = False
+
+def init_async_renderer(width: int = 64, height: int = 64) -> None:
+    """
+    Initializes the persistent background renderer.
+    Safe to call multiple times; the second time is no-op.
+    """
+    global _renderer_initialized
+    if _renderer_initialized:
+        return
+    rc = lib.antnet_renderer_async_init(width, height)
+    if rc == 0:
+        _renderer_initialized = True
+    else:
+        raise RuntimeError(f"init_async_renderer failed with code {rc}")
+
+def shutdown_async_renderer() -> None:
+    """
+    Stops the background renderer thread. Safe to call more than once.
+    """
+    global _renderer_initialized
+    if not _renderer_initialized:
+        return
+    rc = lib.antnet_renderer_async_shutdown()
+    if rc == 0:
+        _renderer_initialized = False
+    else:
+        raise RuntimeError(f"shutdown_async_renderer failed with code {rc}")
+
+def render_heatmap_rgba(
+    pts_xy: list[float],
+    strength: list[float],
+    width: int,
+    height: int
+) -> bytes:
+    """
+    Renders a heatmap from a point cloud and strength values using the GPU (OpenGL ES + EGL).
+    This function is fully decoupled from AntNetWrapper and may be called from any thread.
+
+    Uses a persistent background thread to avoid interfering with Qt.
+    """
+    # Ensure the async renderer is started
+    init_async_renderer()
+
+    if len(pts_xy) % 2 != 0:
+        raise ValueError("pts_xy must be a flat list of x,y pairs (even length)")
+
+    n = len(strength)
+    if len(pts_xy) != 2 * n:
+        raise ValueError("length mismatch: len(pts_xy) must be 2×len(strength)")
+
+    c_pts = ffi.new("float[]", pts_xy)
+    c_str = ffi.new("float[]", strength)
+    c_buf = ffi.new("unsigned char[]", width * height * 4)
+
+    rc = lib.antnet_render_heatmap_rgba(c_pts, c_str, n, c_buf, width, height)
+    if rc != ERR_SUCCESS:
+        raise RuntimeError(f"heatmap render failed with code {rc}")
+
+    return ffi.buffer(c_buf, width * height * 4)[:]

@@ -38,17 +38,9 @@ def main() -> None:
     ])
 
     # -------------------------------------------------------------------------
-    # 3/9 Generate Python TypedDicts from C headers
+    # 3/9 Well ...
     ensure_dir("src/python/structs/_generated")
-    run("3/9", [
-        "python3", "src/python/tools/generate_structs.py",
-        "--headers",
-        "include/antnet_network_types.h",
-        "include/antnet_config_types.h",
-        "include/antnet_brute_force_types.h",
-        "include/backend.h",
-        "--output", "src/python/structs/_generated/auto_structs.py"
-    ])
+    
 
     # -------------------------------------------------------------------------
     # 4/9 Preprocess aggregator header for pycparser

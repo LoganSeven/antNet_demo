@@ -2,7 +2,11 @@
 /*
  * The relevant changes are in antnet_run_all_solvers to incorporate ACO logic
  * plus the newly added antnet_get_config for reading the AppConfig.
- * The rest of the file remains the same, except for new lines with aco_v1 calls.
+ * The rest of the file remains the same, except for new lines with aco_v1 calls,
+ * and the final function antnet_render_heatmap_rgba which now calls the async approach.
+ * Two new functions at the end manage the async renderer lifecycle:
+ *    antnet_renderer_async_init
+ *    antnet_renderer_async_shutdown
  */
 
  #include "../../include/backend.h"
@@ -12,6 +16,7 @@
  #include "../../include/random_algo.h"
  #include "../../include/cpu_brute_force.h"
  #include "../../include/config_manager.h"
+ #include "../../include/heatmap_renderer_async.h"
  #include <stdio.h>
  #include <stdlib.h>
  #include <string.h>
@@ -58,30 +63,30 @@
  #endif
              AntNetContext* ctx = &g_contexts[i];
              ctx->node_count = node_count;
-             ctx->min_hops = min_hops;
-             ctx->max_hops = max_hops;
-             ctx->iteration = 0;
-             ctx->nodes = NULL;
-             ctx->edges = NULL;
-             ctx->num_nodes = 0;
-             ctx->num_edges = 0;
+             ctx->min_hops   = min_hops;
+             ctx->max_hops   = max_hops;
+             ctx->iteration  = 0;
+             ctx->nodes      = NULL;
+             ctx->edges      = NULL;
+             ctx->num_nodes  = 0;
+             ctx->num_edges  = 0;
  
-             ctx->random_best_length = 0;
+             ctx->random_best_length  = 0;
              ctx->random_best_latency = 0;
              memset(ctx->random_best_nodes, 0, sizeof(ctx->random_best_nodes));
  
              config_set_defaults(&ctx->config);
              ctx->config.set_nb_nodes = node_count;
-             ctx->config.min_hops = min_hops;
-             ctx->config.max_hops = max_hops;
+             ctx->config.min_hops     = min_hops;
+             ctx->config.max_hops     = max_hops;
  
-             ctx->brute_best_length = 0;
+             ctx->brute_best_length  = 0;
              ctx->brute_best_latency = 0;
              memset(ctx->brute_best_nodes, 0, sizeof(ctx->brute_best_nodes));
              memset(&ctx->brute_state, 0, sizeof(ctx->brute_state));
  
              /* ACO initialization fields */
-             ctx->aco_best_length = 0;
+             ctx->aco_best_length  = 0;
              ctx->aco_best_latency = 0;
              memset(ctx->aco_best_nodes, 0, sizeof(ctx->aco_best_nodes));
              memset(&ctx->aco_v1, 0, sizeof(ctx->aco_v1));
@@ -137,7 +142,7 @@
              return ERR_ARRAY_TOO_SMALL;
          }
          memcpy(out_nodes, ctx->random_best_nodes, ctx->random_best_length * sizeof(int));
-         *out_path_len = ctx->random_best_length;
+         *out_path_len      = ctx->random_best_length;
          *out_total_latency = ctx->random_best_latency;
      } else {
          static int mock_nodes[] = {1, 2, 3, 5, 7, 9};
@@ -149,7 +154,7 @@
              return ERR_ARRAY_TOO_SMALL;
          }
          memcpy(out_nodes, mock_nodes, length * sizeof(mock_nodes[0]));
-         *out_path_len = length;
+         *out_path_len      = length;
          *out_total_latency = 42 + ctx->iteration;
      }
  #ifndef _WIN32
@@ -227,7 +232,7 @@
  #ifndef _WIN32
      pthread_mutex_lock(&ctx->lock);
  #endif
-     *out_len_aco = 0;
+     *out_len_aco     = 0;
      *out_latency_aco = 0;
  
      /* 1) ACO */
@@ -363,5 +368,71 @@
      pthread_mutex_unlock(&ctx->lock);
  #endif
      return count;
+ }
+ 
+ /*
+  * antnet_render_heatmap_rgba
+  *
+  * GPU-accelerated offscreen heatmap rendering based on a cloud of 2D points
+  * and their corresponding pheromone strength values. This function is fully
+  * decoupled from the AntNetContext and may be called from any thread.
+  * It uses a *persistent* EGL background thread (hr_renderer_async.c).
+  *
+  * Each point in the input array is rendered as a radially faded sprite, and its
+  * color is interpolated from blue to red based on the provided strength value
+  * (0.0 = blue, 1.0 = red). The output is written to the provided RGBA buffer.
+  *
+  * Returns:
+  *   ERR_SUCCESS (0) on success
+  *   ERR_INVALID_ARGS if any argument is invalid
+  *   ERR_INTERNAL_FAILURE if rendering fails
+  */
+ int antnet_render_heatmap_rgba(
+     const float *pts_xy,
+     const float *strength,
+     int n,
+     unsigned char *out_rgba,
+     int width,
+     int height
+ )
+ {
+     if (!pts_xy || !strength || !out_rgba || n <= 0 || width <= 0 || height <= 0)
+         return ERR_INVALID_ARGS;
+ 
+     int rc = hr_enqueue_render(pts_xy, strength, n, out_rgba, width, height);
+     if (rc != 0) {
+         return ERR_INTERNAL_FAILURE;
+     }
+ 
+     return ERR_SUCCESS;
+ }
+ 
+ /*
+  * antnet_renderer_async_init
+  * Starts the persistent renderer thread. Call once on application startup.
+  * If it is already running, does nothing. 
+  * Returns ERR_SUCCESS on success, negative on error.
+  */
+ int antnet_renderer_async_init(int initial_width, int initial_height)
+ {
+     int ret = hr_renderer_start(initial_width, initial_height);
+     if (ret != 0) {
+         return ERR_INTERNAL_FAILURE;
+     }
+     return ERR_SUCCESS;
+ }
+ 
+ /*
+  * antnet_renderer_async_shutdown
+  * Stops the background renderer thread and cleans up. 
+  * Safe to call more than once, the second time is no-op.
+  */
+ int antnet_renderer_async_shutdown(void)
+ {
+     int ret = hr_renderer_stop();
+     if (ret != 0) {
+         return ERR_INTERNAL_FAILURE;
+     }
+     return ERR_SUCCESS;
  }
  

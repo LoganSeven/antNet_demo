@@ -1,12 +1,13 @@
 import sys
 import os
+#os.environ["QT_OPENGL"] = "desktop"
 
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(project_root, "src", "python"))
 
 
 from gui.main_window import MainWindow
-from PyQt5.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 
 def main():
     print("👉 Starting AntNet Demo GUI…")
@@ -18,3 +19,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

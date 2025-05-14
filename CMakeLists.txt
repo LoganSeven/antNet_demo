@@ -35,18 +35,29 @@ set(SOURCE_FILES
     src/c/random_algo.c
     src/c/cpu_brute_force.c
     src/c/cpu_ACOv1.c
-    src/c/config_manager.c             
-    third_party/ini.c                  
+    src/c/config_manager.c
+    src/c/heatmap_renderer.c
+    src/c/heatmap_renderer_async.c   # <--- Added async renderer
+    third_party/ini.c
 )
+
+# ------------------ OpenGL ES / EGL -------------------------------
+find_library(EGL_LIB EGL REQUIRED)
+find_library(GLESv2_LIB GLESv2 REQUIRED)
 
 # ------------------ Build shared library --------------------------
 add_library(antnet_backend SHARED ${SOURCE_FILES})
 
 # ------------------ Linking ---------------------------------------
-# Link math and pthread on Unix-like systems if needed
 if(UNIX AND NOT APPLE)
     find_package(Threads REQUIRED)
-    target_link_libraries(antnet_backend PRIVATE m Threads::Threads)
+    target_link_libraries(antnet_backend
+        PRIVATE
+            m
+            Threads::Threads
+            ${EGL_LIB}
+            ${GLESv2_LIB}
+    )
 endif()
 
 # ------------------ Install targets (optional) --------------------
