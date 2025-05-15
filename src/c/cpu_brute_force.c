@@ -60,9 +60,6 @@ void brute_force_reset_state(AntNetContext* ctx) {
 
     for (int i = 0; i < ctx->max_hops; i++)
         ctx->brute_state.combination[i] = i;
-
-    printf("[DEBUG][BF RESET] Reset state with %d candidates, min_hops=%d, max_hops=%d\n", 
-            count, ctx->min_hops, ctx->max_hops);
 }
 
 int brute_force_search_step(

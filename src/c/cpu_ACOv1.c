@@ -116,14 +116,14 @@
      if (!g_aco_seeded) {
          g_aco_seeded = 1;
          srand((unsigned int)time(NULL));
-         printf("[DEBUG][ACO] RNG seeded\n");
+
      }
  
      ctx->aco_v1.is_initialized = 1;
      ctx->aco_best_length  = 0;
      ctx->aco_best_latency = 0;
  
-     printf("[DEBUG][ACO] aco_v1_init done: node_count=%d, edges=%d\n",
+     printf("[ACO] aco_v1_init done: node_count=%d, edges=%d\n",
             ctx->num_nodes, ctx->num_edges);
      return ERR_SUCCESS;
  }

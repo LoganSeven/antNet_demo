@@ -73,8 +73,6 @@ int antnet_update_topology(
             return ERR_MEMORY_ALLOCATION;
         }
         memcpy(ctx->nodes, nodes, sizeof(NodeData) * (size_t)num_nodes);
-
-        printf("[DEBUG] Nodes updated (%d total):\n", num_nodes);
     }
     ctx->num_nodes = num_nodes;
 
@@ -92,12 +90,7 @@ int antnet_update_topology(
             return ERR_MEMORY_ALLOCATION;
         }
         memcpy(ctx->edges, edges, sizeof(EdgeData) * (size_t)num_edges);
-
-        printf("[DEBUG] Edges updated (%d total):\n", num_edges);
-        for (int e = 0; e < num_edges; ++e) {
-            printf("  [DEBUG] Edge[%d]: from_id=%d, to_id=%d\n",
-                   e, ctx->edges[e].from_id, ctx->edges[e].to_id);
-        }
+        printf("Edges updated (%d total):\n", num_edges);        
     }
     ctx->num_edges = num_edges;
 
