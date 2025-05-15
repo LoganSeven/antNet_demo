@@ -49,7 +49,7 @@ def test_render_and_save_png(width, height):
     #img.save(out_path)
 
     assert img.size == (width, height), "Image size does not match expected dimensions"
-    _announce(f"✅ test_render_and_save_png – {out_path} saved successfully")
+    _announce(f"✅ test_render– saved successfully")
 
     # Shut down the async renderer after the test
     shutdown_async_renderer()

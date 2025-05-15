@@ -10,9 +10,9 @@
  */
 
  #include "../../include/backend.h"
- #include "../../include/backend_topology.h"
+ //#include "../../include/backend_topology.h"
  #include "../../include/error_codes.h"
- #include "../../include/cpu_ACOv1.h"
+ #include "../../include/algo/cpu/cpu_ACOv1.h"
  #include "../../include/random_algo.h"
  #include "../../include/cpu_brute_force.h"
  #include "../../include/config_manager.h"

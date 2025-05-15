@@ -36,7 +36,7 @@
  #include <time.h>
  #include <limits.h>
  #include "../../include/error_codes.h"
- #include "../../include/cpu_ACOv1.h"
+ #include "../../include/algo/cpu/cpu_ACOv1.h"
  #include "../../include/antnet_aco_v1_types.h"
  #include "../../include/backend.h"
  

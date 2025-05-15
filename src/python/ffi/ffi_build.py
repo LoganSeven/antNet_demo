@@ -34,7 +34,7 @@ ffi.set_source(
         '#include "backend_topology.h"\n'
         '#include "config_manager.h"\n'
         '#include "hop_map_manager.h"\n'
-        '#include "cpu_ACOv1.h"\n'
+        '#include "algo/cpu/cpu_ACOv1.h"\n'
         '#include "cpu_brute_force.h"\n'
         '#include "random_algo.h"\n'
     ),
