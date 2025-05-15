@@ -45,28 +45,30 @@ def main() -> None:
     # Cleanup
     log("🗑️","removing the old build directory")
     remove_build_dir(BUILD_DIR)
+
     # Regenerate ffi_build.py from scanned .c/.h layout
     log("🛠️", "Regenerating ffi_build.py from directory structure...")
     run("", [
-    PYTHON, "src/python/ffi/build_builder.py",
-    "--src-c-dir", "../../c",
-    "--include-dir", "../../../include",
-    "--third-party-dir", "../../../third_party",
-    "--exclude", "build,tests,obsolete",
-    "--module-name", "backend_cffi",
-    "--output", "src/python/ffi/ffi_build.py"
-])
-    # CMake build (auto-detects generator)
+        PYTHON, "src/python/tools/build_builder.py",
+        "--src-c-dir", "../../c",
+        "--include-dir", "../../../include",
+        "--third-party-dir", "../../../third_party",
+        "--exclude", "build,tests,obsolete",
+        "--module-name", "backend_cffi",
+        "--output", "src/python/ffi/ffi_build.py"
+    ])
+
+    # CMake build
     log("🔨", "Configuring project with CMake...")
     run("", ["cmake", "-S", ".", "-B", "build", "-DCMAKE_BUILD_TYPE=Debug"])
     run("", ["cmake", "--build", "build"])
 
-    # 3️⃣ Generate Python error constants
+    #  Generate Python error constants
     log("🛠️", "Generating Python constants from error codes... Still useful ❓")
     ensure_dir("src/python/consts/_generated")
     run("2/9", [
         PYTHON, "src/python/tools/errors_const_c2python.py",
-        "include/error_codes.h",
+        "include/consts/error_codes.h",
         "src/python/consts/_generated"
     ])
 
@@ -95,7 +97,7 @@ def main() -> None:
     cpp_tokens = [f"--cpp-flag={flag}" for flag in cpp_flags]
 
     run("", [
-        PYTHON, "src/python/ffi/preprocess_headers.py",
+        PYTHON, "src/python/tools/preprocess_headers.py",
         "--headers", "include/cffi_entrypoint.h",
         "--outdir", "build/preprocessed",
         "--include", "./stub_headers",
@@ -107,16 +109,22 @@ def main() -> None:
     # Generate CDEF_SOURCE
     log("🛠️", "Generating CFFI CDEF_SOURCE...")
     run("", [
-        PYTHON, "src/python/ffi/generate_cffi_defs.py",
+        PYTHON, "src/python/tools/generate_cffi_defs.py",
         "--preprocessed", "build/preprocessed",
         "--output", "src/python/ffi/cdef_string.py"
     ])
+
+    # Regenerate backend_api.py
+    # Appends or refreshes an AUTO-GENERATED block with wrappers for every 
+    # antnet_* function found in cdef_string.py that is not already implemented in the base template.
+    log("🛠️", "Regenerating backend_api.py from CDEF source...")
+    run("",[PYTHON, "src/python/tools/backend_end_api_builder.py"])
 
     # Build Python bindings
     log("🧱", "Building Python CFFI module...")
     if (VENV_BIN / "activate").exists():
         os.environ["PATH"] = f"{VENV_BIN}:{os.environ['PATH']}"
-    run("6/9", [PYTHON, "-m", "src.python.ffi.ffi_build"])
+    run("", [PYTHON, "-m", "src.python.ffi.ffi_build"])
 
     # Copy generated .so/.pyd to ffi/
     log("📥", f"Copying compiled CFFI module (*.{EXT_SUFFIX}) to src/python/ffi/")

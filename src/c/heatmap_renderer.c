@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "../../include/heatmap_renderer.h"
+#include "../../include/rendering/heatmap_renderer.h"
 
 static const char *VS_SRC =
 "#version 300 es\n"

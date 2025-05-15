@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#include "backend.h"
+#include "../../core/backend.h"
 
 /*
  * aco_v1_init: to be implemented with actual pheromone and ant structure setups.

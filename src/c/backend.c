@@ -9,14 +9,13 @@
  *    antnet_renderer_async_shutdown
  */
 
- #include "../../include/backend.h"
- //#include "../../include/backend_topology.h"
- #include "../../include/error_codes.h"
+ #include "../../include/core/backend.h"
+ #include "../../include/consts/error_codes.h"
  #include "../../include/algo/cpu/cpu_ACOv1.h"
- #include "../../include/random_algo.h"
- #include "../../include/cpu_brute_force.h"
- #include "../../include/config_manager.h"
- #include "../../include/heatmap_renderer_async.h"
+ #include "../../include/algo/cpu/random_algo.h"
+ #include "../../include/algo/cpu/cpu_brute_force.h"
+ #include "../../include/managers/config_manager.h"
+ #include "../../include/rendering/heatmap_renderer_async.h"
  #include <stdio.h>
  #include <stdlib.h>
  #include <string.h>

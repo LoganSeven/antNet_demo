@@ -1,24 +1,9 @@
 #!/usr/bin/env python3
 # src/python/ffi/build_builder.py
-"""
-build_builder.py
-
-Recursively scans:
-  - .c files from --src-c-dir
-  - .h files from --include-dir
-  - Skips folders listed in --exclude (comma-separated)
-
-Generates an ffi_build.py containing:
-  - A hardcoded import of CDEF_SOURCE
-  - A list of includes from parsed local headers
-  - A sources list of all .c files
-  - Standard EGL/GLESv2 build params
-"""
 
 import os
 import argparse
 from pathlib import Path
-import re
 
 
 def walk_for_files(root_dir, extensions, excluded_folders):
@@ -30,24 +15,28 @@ def walk_for_files(root_dir, extensions, excluded_folders):
                 yield str(Path(dirpath, f).resolve())
 
 
-def parse_local_includes(header_root, excluded_folders):
+def generate_flat_include_block(header_root: Path, excluded_folders: set[str]) -> list[str]:
     """
-    Parses all .h files for lines like: #include "something.h"
-    Filters out headers like 'pthread.h' to avoid type conflicts with glibc.
+    Returns a list of #include "relative/path/to/header.h" for all headers found recursively.
+    Ensures backend.h is included first (even from a subfolder).
     """
-    include_pattern = re.compile(r'^\s*#\s*include\s*"([^"]+)"')
-    includes = set()
+    headers = set()
 
-    for path in walk_for_files(header_root, extensions={".h"}, excluded_folders=excluded_folders):
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                match = include_pattern.match(line)
-                if match:
-                    header = match.group(1)
-                    if "pthread.h" not in header:  # filter out stub pthread
-                        includes.add(f'#include "{header}"')
+    for header_path in walk_for_files(header_root, extensions={".h"}, excluded_folders=excluded_folders):
+        if "pthread.h" in header_path:
+            continue
+        relative_path = Path(header_path).relative_to(header_root)
+        headers.add(str(relative_path).replace("\\", "/"))  # normalize Windows paths
 
-    return sorted(includes)
+    headers = sorted(headers)
+
+    # Promote backend.h if found anywhere
+    backend_entry = next((h for h in headers if Path(h).name == "backend.h"), None)
+    if backend_entry:
+        headers.remove(backend_entry)
+        headers.insert(0, backend_entry)
+
+    return [f'#include "{h}"' for h in headers]
 
 
 def generate_ffi_build_py(
@@ -113,7 +102,7 @@ def main():
     excluded_folders = {d.strip() for d in args.exclude.split(",") if d.strip()}
 
     c_files = list(walk_for_files(src_c_dir, extensions={".c"}, excluded_folders=excluded_folders))
-    header_includes = parse_local_includes(include_dir, excluded_folders)
+    header_includes = generate_flat_include_block(include_dir, excluded_folders)
 
     output_text = generate_ffi_build_py(
         c_files=c_files,

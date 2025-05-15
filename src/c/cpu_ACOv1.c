@@ -35,10 +35,10 @@
  #include <string.h>
  #include <time.h>
  #include <limits.h>
- #include "../../include/error_codes.h"
+ #include "../../include/consts/error_codes.h"
  #include "../../include/algo/cpu/cpu_ACOv1.h"
- #include "../../include/antnet_aco_v1_types.h"
- #include "../../include/backend.h"
+ #include "../../include/types/antnet_aco_v1_types.h"
+ #include "../../include/core/backend.h"
  
  /* Single-process RNG seeding guard, similar to random_algo.c */
  static int g_aco_seeded = 0;

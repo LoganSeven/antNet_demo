@@ -1,6 +1,5 @@
-#include "../../include/cpu_brute_force.h"
-#include "../../include/error_codes.h"
-#include <stdlib.h>
+#include "../../include/algo/cpu/cpu_brute_force.h"
+#include "../../include/consts/error_codes.h"
 #include <string.h>
 #include <limits.h>
 #include <stdio.h>

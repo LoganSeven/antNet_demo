@@ -30,7 +30,7 @@ typedef struct edge_data_s EdgeData;
 
 #else
 
-#include "antnet_network_types.h"
+#include "./types/antnet_network_types.h"
 
 #endif /* CFFI_BUILD */
 

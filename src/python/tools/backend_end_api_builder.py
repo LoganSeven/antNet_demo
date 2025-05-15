@@ -1,4 +1,26 @@
-# src/python/ffi/backend_api.py
+#!/usr/bin/env python3
+# src/python/ffi/backend_end_api_builder.py
+
+from __future__ import annotations
+
+import ast
+import importlib.util
+import re
+import sys
+from pathlib import Path
+from textwrap import indent
+
+# ────────────────────────────── Paths ──────────────────────────────
+ROOT     = Path(__file__).resolve().parents[3]
+CDEF_PY  = ROOT / "src/python/ffi/cdef_string.py"
+OUTPUT   = ROOT / "src/python/ffi/backend_api.py"
+REPORT   = ROOT / "build/api_autogen_report.txt"
+
+# ─────────────────────────── TEMPLATES ─────────────────────────────
+
+# This is the core “manual” code you provided. It's split into BEFORE and AFTER 
+# so that we can insert auto-generated stubs if new C functions appear:
+TEMPLATE_BEFORE = r'''# src/python/ffi/backend_api.py
 # High-level Python wrapper for the C AntNet backend.
 # security/hardening: negative C return code ⇒ ValueError
 # unexpected positive non-zero ⇒ RuntimeError
@@ -277,11 +299,9 @@ class AntNetWrapper:
             self.shutdown()
         except:
             pass
+'''
 
-
-    # (all antnet_* functions accounted for in manual code)
-
-
+TEMPLATE_AFTER = r'''
 # Global state for the async renderer. This ensures we init exactly once.
 _renderer_initialized = False
 
@@ -343,3 +363,104 @@ def render_heatmap_rgba(
         raise RuntimeError(f"heatmap render failed with code {rc}")
 
     return ffi.buffer(c_buf, width * height * 4)[:]
+'''
+
+# ───────────────────────── Parsing Logic ────────────────────────────
+FUNC_RE = re.compile(r"^\s*[\w\s\*]+\s+(antnet_\w+)\s*\(", re.MULTILINE)
+
+def load_cdefs() -> list[str]:
+    """
+    Loads the raw C definitions from cdef_string.py, returns all antnet_*
+    function names found via regex.
+    """
+    spec = importlib.util.spec_from_file_location("_cdef", CDEF_PY)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)  # type: ignore
+    cdef_raw = mod.CDEF_SOURCE  # type: ignore[attr-defined]
+
+    return sorted(set(m.group(1) for m in FUNC_RE.finditer(cdef_raw)))
+
+def detect_existing_wrappers() -> set[str]:
+    """
+    Parse the existing output file (backend_api.py) as an AST,
+    searching for calls of the form lib.antnet_<something>.
+    Because the manual code uses custom method names for these calls,
+    we cannot rely on def-names. Instead, we look for any usage:
+
+        lib.antnet_foo(self.context_id, ...)
+
+    If found, we consider 'antnet_foo' "implemented."
+    """
+    if not OUTPUT.exists():
+        return set()
+
+    tree = ast.parse(OUTPUT.read_text(encoding="utf-8"))
+    found = set()
+
+    for node in ast.walk(tree):
+        # We're looking for calls or attribute usage referencing "lib.<function>"
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            attr = node.func.attr  # e.g. antnet_run_iteration
+            if attr.startswith("antnet_"):
+                found.add(attr)
+    return found
+
+def generate_wrapper(fname: str) -> str:
+    """
+    Creates an auto-generated minimal wrapper for any newly added function
+    that is not yet accounted for in the manual code. If you want custom logic,
+    you can edit this function or handle that function manually in the template.
+    """
+    stub = f'''
+def {fname}(self, *args):
+    """
+    AUTO-GENERATED stub for lib.{fname}.
+    Edit this manually if you need custom argument/return logic.
+    """
+    if self.context_id is None:
+        raise ValueError("No valid context_id for {fname}.")
+    rc = lib.{fname}(self.context_id, *args)
+    if rc == ERR_SUCCESS or rc == 0:
+        return rc
+    if rc < 0:
+        raise ValueError("{fname} failed with code {{rc}}")
+    raise RuntimeError("{fname} returned unexpected code {{rc}}")
+'''
+    return indent(stub.strip("\n"), "    ")
+
+# ────────────────────────────── Main ───────────────────────────────
+def main() -> None:
+    all_funcs = load_cdefs()
+    existing = detect_existing_wrappers()
+
+    # Any function not yet implemented in the template is "missing"
+    missing = [f for f in all_funcs if f not in existing]
+
+    # Generate stubs for missing ones
+    if missing:
+        block = "\n\n".join(generate_wrapper(fname) for fname in missing)
+    else:
+        block = "    # (all antnet_* functions accounted for in manual code)"
+
+    # Create final combined text
+    full_output = TEMPLATE_BEFORE + "\n\n" + block + "\n\n" + TEMPLATE_AFTER
+
+    # Write to disk
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT.write_text(full_output, encoding="utf-8")
+
+    # Also write a short report
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    REPORT.write_text(
+        f"Total CDEF functions : {len(all_funcs)}\n"
+        f"Already implemented  : {len(existing)}\n"
+        f"Wrappers generated   : {len(missing)}\n"
+        f"Output file          : {OUTPUT}\n",
+        encoding="utf-8"
+    )
+
+    print(f"✅ {OUTPUT.name} regenerated with {len(missing)} new wrapper(s).")
+    print(f"[i] Report written to {REPORT}")
+
+if __name__ == "__main__":
+    main()

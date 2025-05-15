@@ -1,48 +1,74 @@
 #!/bin/bash
 
-# Fonction récursive pour afficher l'arborescence
-function display_tree {
-    local dir=$1
-    local indent=$2
+# GitHub-compatible folder tree display with vertical bars (│) and proper exclusions.
+# Recursively removes __pycache__ and other known transient/irrelevant folders.
 
-    # Liste des répertoires et fichiers à exclure
-    local exclude_dirs=(".cache" ".pytest_cache" "tests/__pycache__" ".vscode" "sdl_lib_src" 
-    "SDL" "build/.cmake" "build/CMakeFiles" "build/python" "Documentation" "venv")
+EXCLUDE_PATTERNS=(
+    ".cache"
+    ".pytest_cache"
+    ".vscode"
+    "sdl_lib_src"
+    "SDL"
+    "build/.cmake"
+    "build/CMakeCache.txt"
+    "build/cmake_install.cmake"
+    "build/Makefile"
+    "build/CMakeFiles"
+    "build/python"
+    "Documentation"
+    "venv"
+    ".git"
+    "__pycache__"
+)
 
-    # Vérifie si le répertoire doit être exclu
-    local exclude=0
-    for exclude_dir in "${exclude_dirs[@]}"; do
-        if [[ "$dir" == */$exclude_dir ]] || [[ "$dir" == */$exclude_dir/* ]]; then
-            exclude=1
-            break
+function is_excluded {
+    local path="$1"
+    for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+        if [[ "$path" == *"/$pattern" || "$path" == *"/$pattern/"* || "$(basename "$path")" == "$pattern" ]]; then
+            return 0
         fi
     done
+    return 1
+}
 
-    if [[ $exclude -eq 1 ]]; then
-        return
-    fi
+function display_tree {
+    local current_dir="$1"
+    local prefix="$2"
+    local is_last="$3"
 
-    # Affiche le répertoire ou fichier actuel
-    local item_name="${dir##*/}"
-    if [[ -d "$dir" ]]; then
-        echo "${indent}└── $item_name/"
-    else
-        echo "${indent}└── $item_name"
-    fi
+    local base=$(basename "$current_dir")
+    local connector="├──"
+    [[ "$is_last" == "1" ]] && connector="└──"
+    echo "${prefix}${connector} $base/"
 
-    # Parcourt les éléments du répertoire
-    local new_indent="$indent    "
-    for item in "$dir"/*; do
-        if [[ -d "$item" ]]; then
-            display_tree "$item" "$new_indent"
-        elif [[ -f "$item" ]]; then
-            echo "${new_indent}├── ${item##*/}"
+    local entries=()
+    while IFS= read -r -d '' entry; do
+        is_excluded "$entry" && continue
+        entries+=("$entry")
+    done < <(find "$current_dir" -mindepth 1 -maxdepth 1 -print0 | sort -z)
+
+    local total=${#entries[@]}
+    for i in "${!entries[@]}"; do
+        local entry="${entries[$i]}"
+        local name=$(basename "$entry")
+        local last=0
+        [[ "$i" -eq $((total - 1)) ]] && last=1
+
+        local new_prefix="$prefix"
+        [[ "$is_last" == "1" ]] && new_prefix+="    " || new_prefix+="│   "
+
+        if [[ -d "$entry" ]]; then
+            display_tree "$entry" "$new_prefix" "$last"
+        else
+            local file_connector="├──"
+            [[ "$last" == "1" ]] && file_connector="└──"
+            echo "${new_prefix}${file_connector} $name"
         fi
     done
 }
 
-# Point de départ de l'arborescence
-root_dir="."
-
-# Appel de la fonction récursive
-display_tree "$root_dir" ""
+# Entry point
+clear
+echo '```text'
+display_tree "." "" 1
+echo '```'

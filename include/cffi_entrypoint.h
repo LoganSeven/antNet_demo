@@ -19,29 +19,29 @@ extern "C" {
  */
 
 /* 1) The raw definitions of NodeData / EdgeData, etc. */
-#include "antnet_network_types.h"
+#include "./types/antnet_network_types.h"
 
 /* 2) Additional types that might appear in function signatures */
-#include "antnet_config_types.h"
-#include "antnet_brute_force_types.h"
-#include "antnet_path_types.h"
+#include "./types/antnet_config_types.h"
+#include "./types/antnet_brute_force_types.h"
+#include "./types/antnet_path_types.h"
 #include "backend_thread_defs.h"
-#include "error_codes.h"
+#include "./consts/error_codes.h"
 
 /* 3) The main backend headers that declare the functions Python needs */
-#include "backend.h"            // antnet_initialize, antnet_run_iteration, etc.
-#include "backend_topology.h"   // antnet_update_topology
+#include "./core/backend.h"            // antnet_initialize, antnet_run_iteration, etc.
+#include "./core/backend_topology.h"   // antnet_update_topology
 
 /* 4) Other solver modules or managers that Python calls or references */
-#include "random_algo.h"        // random_search_path
-#include "cpu_brute_force.h"    // brute_force_search_step
+#include "./algo/cpu/random_algo.h"        // random_search_path
+#include "./algo/cpu/cpu_brute_force.h"  // brute_force_search_step
 #include "./algo/cpu/cpu_ACOv1.h"          // aco_v1_...
-#include "config_manager.h"     // config_load, config_save, ...
-#include "hop_map_manager.h"
+#include "./managers/config_manager.h"     // config_load, config_save, ...
+#include "./managers/hop_map_manager.h"
 
 /* 5) generators , e.g. heatmap_renderer*/
-#include "heatmap_renderer.h"
-#include "heatmap_renderer_async.h"
+#include "./rendering/heatmap_renderer.h"
+#include "./rendering/heatmap_renderer_async.h"
 
 #ifdef __cplusplus
 }

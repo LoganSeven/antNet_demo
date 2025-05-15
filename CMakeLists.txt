@@ -24,6 +24,10 @@ endif()
 # Ensure this covers error_codes.h, random_algo.h, etc.
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/algo
+    ${CMAKE_SOURCE_DIR}/include/algo/cpu
+    ${CMAKE_SOURCE_DIR}/include/rendering
+    ${CMAKE_SOURCE_DIR}/include/types
     ${CMAKE_SOURCE_DIR}/third_party
 )
 
