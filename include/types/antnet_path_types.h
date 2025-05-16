@@ -1,3 +1,5 @@
+/* Relative Path: include/types/antnet_path_types.h */
+
 // include/antnet_path_types.h
 #ifndef ANTNET_PATH_TYPES_H
 #define ANTNET_PATH_TYPES_H

@@ -1,4 +1,4 @@
-// src/c/backend_topology.c
+/* Relative Path: src/c/core/backend_topology.c */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

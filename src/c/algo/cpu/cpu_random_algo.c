@@ -1,4 +1,4 @@
-// src/c/random_algo.c
+/* Relative Path: src/c/algo/cpu/cpu_random_algo.c */
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,4 +1,4 @@
-// include/config_manager.h
+/* Relative Path: include/managers/config_manager.h */
 #ifndef CONFIG_MANAGER_H
 #define CONFIG_MANAGER_H
 

@@ -1,4 +1,4 @@
-// include/error_codes.h
+/* Relative Path: include/consts/error_codes.h */
 #ifndef ERROR_CODES_H
 #define ERROR_CODES_H
 

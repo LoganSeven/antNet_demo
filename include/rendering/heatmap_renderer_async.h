@@ -1,4 +1,4 @@
-/* include/heatmap_renderer_async.h */
+/* Relative Path: include/rendering/heatmap_renderer_async.h */
 #ifndef HEATMAP_RENDERER_ASYNC_H
 #define HEATMAP_RENDERER_ASYNC_H
 

@@ -1,4 +1,4 @@
-// include/cffi_entrypoint.h
+/* Relative Path: include/cffi_entrypoint.h */
 #ifndef CFFI_ENTRYPOINT_H
 #define CFFI_ENTRYPOINT_H
 

@@ -1,4 +1,4 @@
-//include/heatmap_renderer.h
+/* Relative Path: include/rendering/heatmap_renderer.h */
 #ifndef HEATMAP_RENDERER_H
 #define HEATMAP_RENDERER_H
 

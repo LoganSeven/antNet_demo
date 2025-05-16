@@ -1,4 +1,4 @@
-// include/hop_map_manager.h
+/* Relative Path: include/managers/hop_map_manager.h */
 #ifndef HOP_MAP_MANAGER_H
 #define HOP_MAP_MANAGER_H
 

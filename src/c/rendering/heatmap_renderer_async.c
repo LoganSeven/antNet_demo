@@ -1,4 +1,4 @@
-/* src/c/heatmap_renderer_async.c */
+/* Relative Path: src/c/rendering/heatmap_renderer_async.c */
 #include "../../../include/rendering/heatmap_renderer_async.h"
 #include "../../../include/rendering/heatmap_renderer.h"
 

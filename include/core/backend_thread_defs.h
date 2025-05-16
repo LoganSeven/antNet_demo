@@ -1,4 +1,4 @@
-// include/backend_thread_defs.h
+/* Relative Path: include/core/backend_thread_defs.h */
 #ifndef BACKEND_THREAD_DEFS_H
 #define BACKEND_THREAD_DEFS_H
 

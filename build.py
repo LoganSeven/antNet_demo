@@ -46,6 +46,14 @@ def main() -> None:
     log("🛠️", "Regenerating CMakeLists.txt...")
     run("", [PYTHON, "src/python/tools/generate_cmake.py", "--write"])
 
+    # ---------------------------------------------------------------------
+    # Ensure all .c/.h files are AI-annotated with their relative path
+    # This helps AI models and developer tools understand file structure,
+    # navigate easily, and maintain coherence across headers and sources.
+    # ---------------------------------------------------------------------
+    log("✨", "annotate files with their relative path, for ai tools...")
+    run("", [PYTHON, "src/python/tools/ai_annotate_relative_path.py"])
+
     # Cleanup
     log("🗑️","removing the old build directory")
     remove_build_dir(BUILD_DIR)

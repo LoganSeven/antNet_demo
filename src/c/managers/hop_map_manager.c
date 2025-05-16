@@ -1,4 +1,4 @@
-// src/c/hop_map_manager.c
+/* Relative Path: src/c/managers/hop_map_manager.c */
 #include "../../../include/managers/hop_map_manager.h"
 #include <stdlib.h>
 #include <string.h>

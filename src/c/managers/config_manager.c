@@ -1,4 +1,4 @@
-// src/c/config_manager.c
+/* Relative Path: src/c/managers/config_manager.c */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

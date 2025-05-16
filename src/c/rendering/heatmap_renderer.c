@@ -1,4 +1,4 @@
-//src/c/heatmap_renderer.c
+/* Relative Path: src/c/rendering/heatmap_renderer.c */
 #define EGL_EGLEXT_PROTOTYPES
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "../../include/rendering/heatmap_renderer.h"
+#include "../../../include/rendering/heatmap_renderer.h"
 
 static const char *VS_SRC =
 "#version 300 es\n"

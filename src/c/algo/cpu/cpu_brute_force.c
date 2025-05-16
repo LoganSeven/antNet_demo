@@ -1,3 +1,4 @@
+/* Relative Path: src/c/algo/cpu/cpu_brute_force.c */
 #include "../../../../include/algo/cpu/cpu_brute_force.h"
 #include "../../../../include/consts/error_codes.h"
 #include <string.h>

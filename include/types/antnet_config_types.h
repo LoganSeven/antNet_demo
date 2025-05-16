@@ -1,3 +1,5 @@
+/* Relative Path: include/types/antnet_config_types.h */
+
 /* include/antnet_config_types.h */
 /*
  * AppConfig: holds all configuration parameters used throughout the project.
