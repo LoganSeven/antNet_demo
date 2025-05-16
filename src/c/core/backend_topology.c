@@ -90,14 +90,31 @@ int antnet_update_topology(
             return ERR_MEMORY_ALLOCATION;
         }
         memcpy(ctx->edges, edges, sizeof(EdgeData) * (size_t)num_edges);
-        printf("Edges updated (%d total):\n", num_edges);        
+        printf("Edges updated (%d total):\n", num_edges);
     }
     ctx->num_edges = num_edges;
 
     printf("[antnet_update_topology] Updated with %d nodes and %d edges.\n",
            ctx->num_nodes, ctx->num_edges);
 
+    /* Force re-init of Brute Force so it picks up new node counts */
     brute_force_reset_state(ctx);
+
+    /*
+     * Also force re-init of ACO memory so next iteration calls aco_v1_init again.
+     * This prevents stale pointers or size mismatches on adjacency/pheromones.
+     */
+    if (ctx->aco_v1.is_initialized) {
+        if (ctx->aco_v1.adjacency) {
+            free(ctx->aco_v1.adjacency);
+            ctx->aco_v1.adjacency = NULL;
+        }
+        if (ctx->aco_v1.pheromones) {
+            free(ctx->aco_v1.pheromones);
+            ctx->aco_v1.pheromones = NULL;
+        }
+        ctx->aco_v1.is_initialized = 0;
+    }
 
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
