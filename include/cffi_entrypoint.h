@@ -33,7 +33,7 @@ extern "C" {
 #include "./core/backend_topology.h"   // antnet_update_topology
 
 /* 4) Other solver modules or managers that Python calls or references */
-#include "./algo/cpu/random_algo.h"        // random_search_path
+#include "./algo/cpu/cpu_random_algo.h"        // random_search_path
 #include "./algo/cpu/cpu_brute_force.h"  // brute_force_search_step
 #include "./algo/cpu/cpu_ACOv1.h"          // aco_v1_...
 #include "./managers/config_manager.h"     // config_load, config_save, ...

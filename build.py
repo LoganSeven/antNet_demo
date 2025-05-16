@@ -42,9 +42,14 @@ def remove_build_dir(path: Path) -> None:
 def main() -> None:
     os.chdir(REPO_ROOT)
 
+    # Regenerate CMakeFiles.txt taking new .c and header folders in account
+    log("🛠️", "Regenerating CMakeLists.txt...")
+    run("", [PYTHON, "src/python/tools/generate_cmake.py", "--write"])
+
     # Cleanup
     log("🗑️","removing the old build directory")
     remove_build_dir(BUILD_DIR)
+
 
     # Regenerate ffi_build.py from scanned .c/.h layout
     log("🛠️", "Regenerating ffi_build.py from directory structure...")

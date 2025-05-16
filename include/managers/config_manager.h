@@ -3,7 +3,7 @@
 #define CONFIG_MANAGER_H
 
 #include <stdbool.h>
-#include "./types/antnet_config_types.h" /* for AppConfig */
+#include "../types/antnet_config_types.h" /* for AppConfig */
 
 #ifdef __cplusplus
 extern "C" {

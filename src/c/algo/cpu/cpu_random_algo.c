@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <limits.h>
-#include "../../include/consts/error_codes.h"
-#include "../../include/algo/cpu/random_algo.h"
-#include "../../include/core/backend.h"
+#include "../../../../include/consts/error_codes.h"
+#include "../../../../include/algo/cpu/cpu_random_algo.h"
+#include "../../../../include/core/backend.h"
 
 /*
  * random_search_path: main function

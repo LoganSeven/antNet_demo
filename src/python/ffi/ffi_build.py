@@ -16,7 +16,7 @@ ffi.set_source(
     f"""#include "core/backend.h"
 #include "algo/cpu/cpu_ACOv1.h"
 #include "algo/cpu/cpu_brute_force.h"
-#include "algo/cpu/random_algo.h"
+#include "algo/cpu/cpu_random_algo.h"
 #include "backend_thread_defs.h"
 #include "cffi_entrypoint.h"
 #include "consts/error_codes.h"
@@ -34,14 +34,14 @@ ffi.set_source(
 """,
     sources=[
         os.path.join(src_c_dir, "heatmap_renderer_async.c"),
-        os.path.join(src_c_dir, "random_algo.c"),
-        os.path.join(src_c_dir, "backend.c"),
-        os.path.join(src_c_dir, "cpu_brute_force.c"),
         os.path.join(src_c_dir, "heatmap_renderer.c"),
-        os.path.join(src_c_dir, "backend_topology.c"),
-        os.path.join(src_c_dir, "config_manager.c"),
-        os.path.join(src_c_dir, "cpu_ACOv1.c"),
         os.path.join(src_c_dir, "hop_map_manager.c"),
+        os.path.join(src_c_dir, "managers/config_manager.c"),
+        os.path.join(src_c_dir, "core/backend.c"),
+        os.path.join(src_c_dir, "core/backend_topology.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_brute_force.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_random_algo.c"),
         ini_c
     ],
     include_dirs=[

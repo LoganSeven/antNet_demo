@@ -8,7 +8,7 @@
 #include <pthread.h>
 #endif
 
-#include "./types/antnet_network_types.h"  /* NodeData, EdgeData */
+#include "../types/antnet_network_types.h"  /* NodeData, EdgeData */
 
 #ifdef __cplusplus
 extern "C" {

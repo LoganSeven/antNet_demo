@@ -5,7 +5,6 @@ project(AntNetBackend VERSION 0.1.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Default to Debug if not specified
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type (Debug or Release)" FORCE)
 endif()
@@ -21,27 +20,28 @@ else()
 endif()
 
 # ------------------ Include directories ---------------------------
-# Ensure this covers error_codes.h, random_algo.h, etc.
 include_directories(
-    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/algo
     ${CMAKE_SOURCE_DIR}/include/algo/cpu
+    ${CMAKE_SOURCE_DIR}/include/algo/gpu
+    ${CMAKE_SOURCE_DIR}/include/consts
+    ${CMAKE_SOURCE_DIR}/include/core
+    ${CMAKE_SOURCE_DIR}/include/managers
     ${CMAKE_SOURCE_DIR}/include/rendering
     ${CMAKE_SOURCE_DIR}/include/types
-    ${CMAKE_SOURCE_DIR}/third_party
 )
 
 # ------------------ Source files ----------------------------------
 set(SOURCE_FILES
-    src/c/hop_map_manager.c
-    src/c/backend.c
-    src/c/backend_topology.c
-    src/c/random_algo.c
-    src/c/cpu_brute_force.c
-    src/c/cpu_ACOv1.c
-    src/c/config_manager.c
+    src/c/algo/cpu/cpu_ACOv1.c
+    src/c/algo/cpu/cpu_brute_force.c
+    src/c/algo/cpu/cpu_random_algo.c
+    src/c/core/backend.c
+    src/c/core/backend_topology.c
     src/c/heatmap_renderer.c
-    src/c/heatmap_renderer_async.c   # <--- Added async renderer
+    src/c/heatmap_renderer_async.c
+    src/c/hop_map_manager.c
+    src/c/managers/config_manager.c
     third_party/ini.c
 )
 
@@ -64,7 +64,7 @@ if(UNIX AND NOT APPLE)
     )
 endif()
 
-# ------------------ Install targets (optional) --------------------
+# ------------------ Install targets -------------------------------
 install(TARGETS antnet_backend
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib

@@ -7,8 +7,8 @@
 #include <pthread.h>
 #endif
 
-#include "../../third_party/ini.h"      /* Unmodified inih header */
-#include "../../include/managers/config_manager.h"
+#include "../../../third_party/ini.h"      /* Unmodified inih header */
+#include "../../../include/managers/config_manager.h"
 
 /*
  * Internal mutex to ensure thread safety when loading or saving config files.
