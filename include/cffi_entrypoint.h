@@ -25,7 +25,7 @@ extern "C" {
 #include "./types/antnet_config_types.h"
 #include "./types/antnet_brute_force_types.h"
 #include "./types/antnet_path_types.h"
-#include "backend_thread_defs.h"
+#include "./core/backend_thread_defs.h"
 #include "./consts/error_codes.h"
 
 /* 3) The main backend headers that declare the functions Python needs */

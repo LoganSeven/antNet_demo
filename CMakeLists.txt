@@ -38,10 +38,10 @@ set(SOURCE_FILES
     src/c/algo/cpu/cpu_random_algo.c
     src/c/core/backend.c
     src/c/core/backend_topology.c
-    src/c/heatmap_renderer.c
-    src/c/heatmap_renderer_async.c
-    src/c/hop_map_manager.c
     src/c/managers/config_manager.c
+    src/c/managers/hop_map_manager.c
+    src/c/rendering/heatmap_renderer.c
+    src/c/rendering/heatmap_renderer_async.c
     third_party/ini.c
 )
 

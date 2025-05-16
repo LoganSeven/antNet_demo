@@ -13,7 +13,7 @@
  #include "../types/antnet_path_types.h"
  #include "../types/antnet_network_types.h"
  #include "../consts/error_codes.h"
- #include "../backend_thread_defs.h"
+ #include "../core/backend_thread_defs.h"
  #include "../types/antnet_aco_v1_types.h"
  #include "../rendering/heatmap_renderer.h"
  #include "../rendering/heatmap_renderer_async.h" /* added for async approach */

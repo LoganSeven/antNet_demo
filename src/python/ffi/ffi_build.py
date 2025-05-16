@@ -17,9 +17,9 @@ ffi.set_source(
 #include "algo/cpu/cpu_ACOv1.h"
 #include "algo/cpu/cpu_brute_force.h"
 #include "algo/cpu/cpu_random_algo.h"
-#include "backend_thread_defs.h"
 #include "cffi_entrypoint.h"
 #include "consts/error_codes.h"
+#include "core/backend_thread_defs.h"
 #include "core/backend_topology.h"
 #include "managers/config_manager.h"
 #include "managers/hop_map_manager.h"
@@ -33,12 +33,12 @@ ffi.set_source(
 #include "types/antnet_path_types.h"
 """,
     sources=[
-        os.path.join(src_c_dir, "heatmap_renderer_async.c"),
-        os.path.join(src_c_dir, "heatmap_renderer.c"),
-        os.path.join(src_c_dir, "hop_map_manager.c"),
         os.path.join(src_c_dir, "managers/config_manager.c"),
+        os.path.join(src_c_dir, "managers/hop_map_manager.c"),
         os.path.join(src_c_dir, "core/backend.c"),
         os.path.join(src_c_dir, "core/backend_topology.c"),
+        os.path.join(src_c_dir, "rendering/heatmap_renderer_async.c"),
+        os.path.join(src_c_dir, "rendering/heatmap_renderer.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_brute_force.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_random_algo.c"),

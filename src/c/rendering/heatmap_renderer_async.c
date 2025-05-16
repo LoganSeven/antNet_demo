@@ -1,6 +1,6 @@
 /* src/c/heatmap_renderer_async.c */
-#include "../../include/rendering/heatmap_renderer_async.h"
-#include "../../include/rendering/heatmap_renderer.h"
+#include "../../../include/rendering/heatmap_renderer_async.h"
+#include "../../../include/rendering/heatmap_renderer.h"
 
 #include <pthread.h>
 #include <stdio.h>
