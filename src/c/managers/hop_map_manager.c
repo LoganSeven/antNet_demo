@@ -1,28 +1,19 @@
 /* Relative Path: src/c/managers/hop_map_manager.c */
-#include "../../../include/managers/hop_map_manager.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <math.h>
 #include <time.h>
+
+#include "../../../include/core/backend.h"
+#include "../../../include/core/backend_topology.h"
+#include "../../../include/consts/error_codes.h"
+#include "../../../include/managers/hop_map_manager.h"
 
 /*
   Minimal reference implementation of a HopMapManager in C.
   Thread safety ensured via the lock mutex. This code is purely for demonstration.
   Integrate random seeding and advanced placement logic as needed.
-*/
-
-//static float clampf(float val, float minval, float maxval) {
-//    return (val < minval) ? minval : (val > maxval ? maxval : val);
-//}
-
-/* We no longer need this for uniform approach, but keep if needed for fallback:
-static float rand_gauss(float mean, float stddev) {
-    float u1 = (float)rand() / (float)(RAND_MAX);
-    float u2 = (float)rand() / (float)(RAND_MAX);
-    float r  = sqrtf(-2.0f * logf(u1)) * stddev;
-    float theta = 2.0f * 3.14159265f * u2;
-    return mean + r * cosf(theta);
-}
 */
 
 HopMapManager* hop_map_manager_create() {
@@ -62,47 +53,12 @@ void hop_map_manager_destroy(HopMapManager *mgr) {
     free(mgr);
 }
 
-static float rand_uniform(float minval, float maxval) {
-    float r = (float)rand() / (float)(RAND_MAX);
-    return minval + r * (maxval - minval);
-}
-
-static int try_place_node_uniform(
-    float *out_x, float *out_y,
-    float margin, float width, float height,
-    int radius,
-    float *existing_x, float *existing_y,
-    size_t existing_count
-) {
-    /*
-     * Attempts to find a random uniform position for a node
-     * that does not overlap with existing positions. Returns 1 if placed, 0 if fail.
-     */
-    int max_tries = 100;
-    float required_spacing_sq = (radius * 2.0f + 30.0f) * (radius * 2.0f + 30.0f);
-
-    for (int t = 0; t < max_tries; t++) {
-        float x = rand_uniform(margin, width - margin);
-        float y = rand_uniform(margin, height - margin);
-
-        int ok = 1;
-        for (size_t i = 0; i < existing_count; i++) {
-            float dx = existing_x[i] - x;
-            float dy = existing_y[i] - y;
-            if ((dx*dx + dy*dy) < required_spacing_sq) {
-                ok = 0;
-                break;
-            }
-        }
-        if (ok) {
-            *out_x = x;
-            *out_y = y;
-            return 1;
-        }
-    }
-    return 0;
-}
-
+/*
+ * hop_map_manager_initialize_map
+ * Keeps the start/end node in the same place as before, then arranges
+ * the hop nodes in a clean 2D grid between them. The randomness is only
+ * in the node latency, not in their positions.
+ */
 void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
     if (!mgr) return;
 
@@ -137,21 +93,21 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
 
     float mid_y = height / 2.0f;
 
-    /* Start node */
+    /* Start node (unchanged) */
     mgr->start_node->node_id  = 0;
     mgr->start_node->x        = margin;
     mgr->start_node->y        = mid_y;
     mgr->start_node->radius   = radius;
     mgr->start_node->delay_ms = (rand() % 41) + 10; /* random 10..50 */
 
-    /* End node */
+    /* End node (unchanged) */
     mgr->end_node->node_id  = 1;
     mgr->end_node->x        = width - margin;
     mgr->end_node->y        = mid_y;
     mgr->end_node->radius   = radius;
     mgr->end_node->delay_ms = (rand() % 41) + 10; /* random 10..50 */
 
-    /* Hop nodes */
+    /* Hop nodes in a grid between start and end */
     mgr->hop_count = (size_t)(total_nodes - 2);
     if (mgr->hop_count > 0) {
         mgr->hop_nodes = (NodeData*)malloc(sizeof(NodeData) * mgr->hop_count);
@@ -163,122 +119,54 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
         }
     }
 
-    /* Collect existing positions in arrays for quick checks: start + end at first */
-    float *placed_x = (float*)malloc(sizeof(float) * (mgr->hop_count + 2));
-    float *placed_y = (float*)malloc(sizeof(float) * (mgr->hop_count + 2));
-    size_t placed_count = 0;
-    if (placed_x && placed_y) {
-        placed_x[placed_count] = mgr->start_node->x;
-        placed_y[placed_count] = mgr->start_node->y;
-        placed_count++;
-        placed_x[placed_count] = mgr->end_node->x;
-        placed_y[placed_count] = mgr->end_node->y;
-        placed_count++;
+    /* Compute a bounding box for the grid (between start.x+100 and end.x-100, top to bottom) */
+    float grid_left   = mgr->start_node->x + 100.0f;
+    float grid_right  = mgr->end_node->x   - 100.0f;
+    float grid_top    = margin;
+    float grid_bottom = height - margin;
+
+    if (grid_right < grid_left) {
+        /* If total_nodes is large, or margin is huge, gracefully skip. */
+        grid_left  = mgr->start_node->x;
+        grid_right = mgr->start_node->x;
     }
 
-    for (size_t i = 0; i < mgr->hop_count; i++) {
-        mgr->hop_nodes[i].node_id  = (int)(i + 2);
-        mgr->hop_nodes[i].radius   = radius;
-        mgr->hop_nodes[i].delay_ms = (rand() % 41) + 10;
+    int total_hops = (int)mgr->hop_count;
+    if (total_hops > 0) {
+        float rowsf = sqrtf((float)total_hops);
+        int row_count = (int)ceilf(rowsf);
+        int col_count = (int)ceilf((float)total_hops / (float)row_count);
 
-        float x_final = width / 2.0f;
-        float y_final = height / 2.0f;
+        /* If grid_right <= grid_left, avoid divide by zero */
+        float w = (grid_right  > grid_left) ? (grid_right  - grid_left) : 1.0f;
+        float h = (grid_bottom > grid_top ) ? (grid_bottom - grid_top ) : 1.0f;
 
-        int success = 0;
-        if (placed_x && placed_y) {
-            /* Attempt uniform random placement */
-            if (try_place_node_uniform(
-                    &x_final, &y_final,
-                    margin, width, height,
-                    radius,
-                    placed_x, placed_y,
-                    placed_count
-                ))
-            {
-                success = 1;
-            }
-        }
+        float cell_width  = w / (float)col_count;
+        float cell_height = h / (float)row_count;
 
-        if (!success) {
-            /* Fallback if we never found a non-overlapping spot after max_tries */
-            /* Place near corners with small local tries to avoid overlap */
-            float corners[4][2] = {
-                { margin, margin },
-                { width - margin, margin },
-                { margin, height - margin },
-                { width - margin, height - margin }
-            };
-            /* Shuffle corner indices for more variability */
-            int corner_indices[4] = {0, 1, 2, 3};
-            for (int c = 0; c < 4; c++) {
-                int swap_idx = c + rand() % (4 - c);
-                int tmp = corner_indices[c];
-                corner_indices[c] = corner_indices[swap_idx];
-                corner_indices[swap_idx] = tmp;
-            }
+        for (int i = 0; i < total_hops; i++) {
+            int row = i / col_count;
+            int col = i % col_count;
 
-            int corner_placed = 0;
-            float required_spacing_sq = (radius * 2.0f + 30.0f) * (radius * 2.0f + 30.0f);
-            for (int c_idx = 0; c_idx < 4 && !corner_placed; c_idx++) {
-                int idx = corner_indices[c_idx];
-                float cx = corners[idx][0];
-                float cy = corners[idx][1];
+            float cx = grid_left + (col + 0.5f) * cell_width;
+            float cy = grid_top  + (row + 0.5f) * cell_height;
 
-                /* Try up to 10 small offsets around the corner */
-                for (int attempt = 0; attempt < 10; attempt++) {
-                    float ox = cx + rand_uniform(-40.0f, 40.0f);
-                    float oy = cy + rand_uniform(-40.0f, 40.0f);
-
-                    int ok = 1;
-                    for (size_t p = 0; p < placed_count; p++) {
-                        float dx = placed_x[p] - ox;
-                        float dy = placed_y[p] - oy;
-                        if ((dx*dx + dy*dy) < required_spacing_sq) {
-                            ok = 0;
-                            break;
-                        }
-                    }
-                    if (ok) {
-                        x_final = ox;
-                        y_final = oy;
-                        corner_placed = 1;
-                        success = 1;
-                        break;
-                    }
-                }
-            }
-
-            if (!corner_placed) {
-                /* If all else fails, place forcibly at the first corner (may cause overlap) */
-                int idx = corner_indices[0];
-                x_final = corners[idx][0];
-                y_final = corners[idx][1];
-                success = 1;
-            }
-        }
-
-        mgr->hop_nodes[i].x = x_final;
-        mgr->hop_nodes[i].y = y_final;
-
-        /* If we successfully have placed_x/placed_y arrays, record this new position */
-        if (placed_x && placed_y) {
-            placed_x[placed_count] = x_final;
-            placed_y[placed_count] = y_final;
-            placed_count++;
+            mgr->hop_nodes[i].node_id  = (int)(i + 2);
+            mgr->hop_nodes[i].x        = cx;
+            mgr->hop_nodes[i].y        = cy;
+            mgr->hop_nodes[i].radius   = radius;
+            mgr->hop_nodes[i].delay_ms = (rand() % 41) + 10; /* random 10..50 */
         }
     }
-
-    if (placed_x) free(placed_x);
-    if (placed_y) free(placed_y);
 
 #ifndef _WIN32
     pthread_mutex_unlock(&mgr->lock);
 #endif
 }
 
-/* 
+/*
  * The rest (create_default_edges, hop_map_manager_export_topology, etc.)
- * remains unchanged from your original code. Shown for completeness:
+ * remains unchanged from your original code. Shown here for completeness:
  */
 
 static float dist_sq(float ax, float ay, float bx, float by) {

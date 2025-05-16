@@ -1,4 +1,4 @@
-# src/python/gui/graph_view/graph_canvas.py
+# Relative Path: src/python/gui/graph_view/graph_canvas.py
 """
 GraphCanvas holds a GraphScene inside a QGraphicsView.
 It does not directly manage node counts; instead, MainWindow or other higher-level
@@ -6,8 +6,10 @@ components call scene.init_scene_with_nodes(...) after reading configuration.
 """
 
 from qtpy.QtWidgets import QGraphicsView
+from qtpy.QtGui import QPainter
 from qtpy.QtCore import Qt
 from .graph_scene import GraphScene
+
 
 class GraphCanvas(QGraphicsView):
     """
@@ -19,6 +21,13 @@ class GraphCanvas(QGraphicsView):
         super().__init__(parent)
         self.scene = GraphScene()
         self.setScene(self.scene)
+
+        # Enable global antialiasing and smooth rendering
+        self.setRenderHints(
+            QPainter.Antialiasing |
+            QPainter.TextAntialiasing |
+            QPainter.SmoothPixmapTransform
+        )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
