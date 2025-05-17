@@ -38,7 +38,8 @@ HopMapManager* hop_map_manager_create();
 /* Destroys and frees the HopMapManager */
 void hop_map_manager_destroy(HopMapManager *mgr);
 
-/* Initializes the map with total_nodes (start node + end node + hop_count) */
+/* Initializes the map with total_nodes (start node + end node + hop_count).
+ * If total_nodes is unchanged, it skips reallocation. */
 void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes);
 
 /* Creates default edges for up to 3 nearest hops, modifies mgr->edges */
@@ -52,6 +53,17 @@ void hop_map_manager_create_default_edges(HopMapManager *mgr);
 void hop_map_manager_export_topology(HopMapManager *mgr,
                                      NodeData *out_nodes, size_t *out_node_count,
                                      EdgeData *out_edges, size_t *out_edge_count);
+
+/*
+ * hop_map_manager_recalc_positions
+ * Recomputes x,y positions of existing nodes (start, end, and hops),
+ * based on the new scene width and height. Does not alter latencies or node arrays.
+ * This allows dynamic resizing of the scene without re-creating nodes.
+ * The function ensures horizontal spacing and vertical centering.
+ */
+void hop_map_manager_recalc_positions(HopMapManager *mgr,
+                                      float scene_width,
+                                      float scene_height);
 
 #ifdef __cplusplus
 }

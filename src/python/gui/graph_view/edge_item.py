@@ -1,9 +1,7 @@
-# Relative Path: src/python/gui/graph_view/edge_item.py
-
+# src/python/gui/graph_view/edge_item.py
 from qtpy.QtWidgets import QGraphicsLineItem
 from qtpy.QtGui import QPen, QColor
 from qtpy.QtCore import Qt
-
 
 class EdgeItem(QGraphicsLineItem):
     """
@@ -23,3 +21,11 @@ class EdgeItem(QGraphicsLineItem):
         self.setPen(pen)
 
         self.setZValue(-1)  # ensure it's behind nodes
+
+    def updateLine(self):
+        """
+        updateLine: read from_node and to_node positions and update geometry accordingly.
+        """
+        if self.from_node and self.to_node:
+            self.setLine(self.from_node.x, self.from_node.y,
+                         self.to_node.x, self.to_node.y)

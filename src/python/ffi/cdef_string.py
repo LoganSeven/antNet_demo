@@ -147,4 +147,5 @@ void hop_map_manager_destroy(HopMapManager *mgr);
 void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes);
 void hop_map_manager_create_default_edges(HopMapManager *mgr);
 void hop_map_manager_export_topology(HopMapManager *mgr, NodeData *out_nodes, size_t *out_node_count, EdgeData *out_edges, size_t *out_edge_count);
+void hop_map_manager_recalc_positions(HopMapManager *mgr, float scene_width, float scene_height);
 '''

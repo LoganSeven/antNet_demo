@@ -1,43 +1,75 @@
-# Relative Path: src/python/gui/graph_view/graph_scene.py
 """
 GraphScene is responsible for visualizing the network graph (nodes and edges).
 It delegates topology structure to HopMapManager and focuses on Qt-based rendering.
 """
 
 import random
-from qtpy.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsTextItem, QGraphicsRectItem
+from qtpy.QtWidgets import (
+    QGraphicsScene,
+    QGraphicsPixmapItem,
+    QGraphicsTextItem,
+    QGraphicsRectItem,
+)
 from qtpy.QtGui import QBrush, QFont, QColor, QPen
 from qtpy.QtCore import Qt, QRectF
+
 from .node_item import NodeItem
 from .edge_item import EdgeItem
-
 from gui.consts.gui_consts import ALGO_COLORS
 from gui.managers.hop_map_manager import HopMapManager
 from gui.graph_view.heatmap_generator import *
 
-
 class GraphScene(QGraphicsScene):
-    def __init__(self, width=1000, height=600, parent=None):
+    def __init__(self, width: int = 1000, height: int = 600, parent=None):
         super().__init__(parent)
         self.setSceneRect(0, 0, width, height)
-        self.manager = HopMapManager()
-        self._node_items_by_id = {}
-        self.best_path_edges = []
-        self.static_edges = []
-        self._heatmap_item = None
-        self._gpu_is_ok = False
 
-    def set_gpu_ok(self, is_ok):
+        # Match glClearColor(0.02, 0.02, 0.1, 1.0)
+        self.setBackgroundBrush(QColor.fromRgbF(0.02, 0.02, 0.1, 1.0))
+
+        self.manager = HopMapManager()
+
+        # Caches ──────────────────────────────────────────────────────────────
+        self._node_items_by_id: dict[int, NodeItem] = {}
+        self.best_path_edges:  list[EdgeItem]       = []
+        self.static_edges:     list[EdgeItem]       = []
+
+        self._bg_label_items_by_id:  dict[int, tuple] = {}   # start / end
+        self._hop_label_items_by_id: dict[int, tuple] = {}   # hops
+
+        self._heatmap_item: QGraphicsPixmapItem | None = None
+        self._gpu_is_ok: bool = False
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Public helpers
+    # ──────────────────────────────────────────────────────────────────────
+    def set_gpu_ok(self, is_ok: bool):
         self._gpu_is_ok = is_ok
 
     def init_scene_with_nodes(self, total_nodes: int):
+        """
+        (Re)initialises HopMapManager with `total_nodes`, then renders nodes.
+        """
         self.manager.initialize_map(total_nodes)
         self._render_nodes()
+
+    def recalc_node_positions(self, scene_width: float, scene_height: float):
+        """
+        Lays out nodes for the new scene size and updates QGraphicsItems.
+        Heat-map overlay is invalidated so the next backend update repaints it
+        at the correct resolution.
+        """
+        self.manager.recalc_positions(scene_width, scene_height)
+        self._apply_positions_to_items()
+        self._invalidate_heatmap()
 
     def create_default_edges(self):
         self.manager.create_default_edges()
 
     def render_manager_edges(self):
+        """
+        Clears & re-creates static (transparent) edges from manager data.
+        """
         for e_item in self.static_edges:
             try:
                 self.removeItem(e_item)
@@ -47,173 +79,203 @@ class GraphScene(QGraphicsScene):
 
         for edge_data in self.manager.edges_data:
             from_node = self._node_items_by_id.get(edge_data["from_id"])
-            to_node = self._node_items_by_id.get(edge_data["to_id"])
+            to_node   = self._node_items_by_id.get(edge_data["to_id"])
             if not from_node or not to_node:
                 continue
-            x1, y1 = from_node.x, from_node.y
-            x2, y2 = to_node.x, to_node.y
-            edge_item = EdgeItem(x1, y1, x2, y2, color="#000000FF", pen_width=2)
+            edge_item = EdgeItem(
+                from_node.x,
+                from_node.y,
+                to_node.x,
+                to_node.y,
+                color="#000000FF",
+                pen_width=2,
+                from_node=from_node,
+                to_node=to_node,
+            )
             self.addItem(edge_item)
             self.static_edges.append(edge_item)
 
     def export_graph_topology(self):
         return self.manager.export_graph_topology()
 
-    def _add_centered_text_block(self, x, y, line1: str, line2: str, radius: float):
+    # ──────────────────────────────────────────────────────────────────────
+    #  NEW — runtime node insertion
+    # ──────────────────────────────────────────────────────────────────────
+    def add_rendered_nodes(self, new_hops: list[dict]):
         """
-        Draws a two-line centered block (label + delay) inside the circle of given radius.
-        The vertical center of both lines matches the circle center, with compact spacing.
+        Called by SignalManager after HopMapManager.add_hops().  
+        Creates QGraphicsItems for each new hop, then triggers a full layout
+        recalculation so **all** nodes (old + new) snap to the updated grid.
         """
-        font1 = QFont("Consolas", 7)
-        font1.setBold(False)
-        font2 = QFont("Consolas", 7)
-        font2.setBold(False)
+        if not new_hops:
+            return
 
-        text_item_1 = QGraphicsTextItem(line1)
-        text_item_1.setFont(font1)
-        text_item_1.setDefaultTextColor(Qt.white)
-        text_item_1.setZValue(10)
-        rect1 = text_item_1.boundingRect()
+        # Create graphics for each new hop
+        for data in new_hops:
+            node_item = NodeItem(
+                x=data["x"],
+                y=data["y"],
+                radius=data["radius"],
+                color=data["color"],
+                label="",                       # two-line label is added below
+                node_id=data["node_id"],
+                delay_ms=data["delay_ms"],
+            )
+            self.addItem(node_item)
+            self._node_items_by_id[data["node_id"]] = node_item
 
-        text_item_2 = QGraphicsTextItem(line2)
-        text_item_2.setFont(font2)
-        text_item_2.setDefaultTextColor(Qt.white)
-        text_item_2.setZValue(10)
-        rect2 = text_item_2.boundingRect()
+            text1, text2 = self._create_hop_label_block(
+                data.get("label", ""),
+                f"{data['delay_ms']} ms",
+            )
+            self._hop_label_items_by_id[data["node_id"]] = (text1, text2)
+            self.addItem(text1)
+            self.addItem(text2)
 
-        # Reduced spacing between lines
-        spacing_adjustment = -9.0
-        total_height = rect1.height() + rect2.height() + spacing_adjustment
-        start_y = y - (total_height / 2)
+        # Re-lay out every node in the enlarged grid
+        w = self.sceneRect().width()
+        h = self.sceneRect().height()
+        self.recalc_node_positions(w, h)
 
-        text_item_1.setPos(x - rect1.width() / 2, start_y)
-        text_item_2.setPos(x - rect2.width() / 2, start_y + rect1.height() + spacing_adjustment)
-
-        text_item_1.setCacheMode(QGraphicsTextItem.DeviceCoordinateCache)
-        text_item_2.setCacheMode(QGraphicsTextItem.DeviceCoordinateCache)
-
-        self.addItem(text_item_1)
-        self.addItem(text_item_2)
-
-
-    def _add_background_label(self, x, y, text, bg_color="#f5f5cc", text_color=Qt.black):
-        pass
-        rect = QRectF(x - 25, y, 50, 18)
-        bg = QGraphicsRectItem(rect)
-        bg.setBrush(QBrush(QColor(bg_color)))
-        bg.setPen(QPen(Qt.NoPen))
-        bg.setZValue(5)
-        self.addItem(bg)
-
-        label = QGraphicsTextItem(text)
-        font = QFont("Consolas", 8)
-        font.setBold(False)
-        label.setFont(font)
-        label.setDefaultTextColor(text_color)
-        label.setZValue(6)
-
-        label_bounds = label.boundingRect()
-        label.setPos(x - label_bounds.width() / 2, y + 1)
-        label.setCacheMode(QGraphicsTextItem.DeviceCoordinateCache)
-        self.addItem(label)
-
+    # ──────────────────────────────────────────────────────────────────────
+    # Private rendering helpers
+    # ──────────────────────────────────────────────────────────────────────
     def _render_nodes(self):
+        """
+        Clears scene and renders all nodes (start, hops, end) from manager.
+        """
         self.best_path_edges.clear()
         self.static_edges.clear()
         self._node_items_by_id.clear()
+        self._bg_label_items_by_id.clear()
+        self._hop_label_items_by_id.clear()
         self.clear()
 
+        # Start node ──────────────────────────────────────────────────────
         if self.manager.start_node_data:
             data = self.manager.start_node_data
-            item = NodeItem(
-                x=data["x"], y=data["y"], radius=data["radius"],
-                color=data["color"], label=data["label"],
-                node_id=data["node_id"], delay_ms=data["delay_ms"]
-            )
-            self.addItem(item)
-            self._node_items_by_id[data["node_id"]] = item
-            self._add_background_label(data["x"], data["y"] + data["radius"] + 4, "Client")
-
-        for data in self.manager.hop_nodes_data:
-            item = NodeItem(
-                x=data["x"], y=data["y"], radius=data["radius"],
-                color=data["color"], label=data["label"],
-                node_id=data["node_id"], delay_ms=data["delay_ms"]
-            )
-            self.addItem(item)
-            self._node_items_by_id[data["node_id"]] = item
-
-            self._add_centered_text_block(
+            node_item = NodeItem(
                 x=data["x"],
                 y=data["y"],
-                line1=data["label"],
-                line2=f"{data['delay_ms']} ms",
-                radius=data["radius"]
+                radius=data["radius"],
+                color=data["color"],
+                label=data["label"],
+                node_id=data["node_id"],
+                delay_ms=data["delay_ms"],
             )
+            self.addItem(node_item)
+            self._node_items_by_id[data["node_id"]] = node_item
 
+            bg, lbl = self._create_background_label(
+                data["x"],
+                data["y"] + data["radius"] + 4,
+                "Client",
+            )
+            self._bg_label_items_by_id[data["node_id"]] = (bg, lbl)
+
+        # Hop nodes ───────────────────────────────────────────────────────
+        for data in self.manager.hop_nodes_data:
+            node_item = NodeItem(
+                x=data["x"],
+                y=data["y"],
+                radius=data["radius"],
+                color=data["color"],
+                label="",                      # two-line label below
+                node_id=data["node_id"],
+                delay_ms=data["delay_ms"],
+            )
+            self.addItem(node_item)
+            self._node_items_by_id[data["node_id"]] = node_item
+
+            t1, t2 = self._create_hop_label_block(
+                data.get("label", ""),
+                f"{data['delay_ms']} ms",
+            )
+            self._hop_label_items_by_id[data["node_id"]] = (t1, t2)
+            self.addItem(t1)
+            self.addItem(t2)
+
+        # End node ────────────────────────────────────────────────────────
         if self.manager.end_node_data:
             data = self.manager.end_node_data
-            item = NodeItem(
-                x=data["x"], y=data["y"], radius=data["radius"],
-                color=data["color"], label=data["label"],
-                node_id=data["node_id"], delay_ms=data["delay_ms"]
-            )
-            self.addItem(item)
-            self._node_items_by_id[data["node_id"]] = item
-            self._add_background_label(data["x"], data["y"] + data["radius"] + 4, "Server")
-
-    def add_rendered_nodes(self, new_hops: list[dict]):
-        for data in new_hops:
-            item = NodeItem(
-                x=data["x"], y=data["y"], radius=data["radius"],
-                color=data["color"], label=data["label"],
-                node_id=data["node_id"], delay_ms=data["delay_ms"]
-            )
-            self.addItem(item)
-            self._node_items_by_id[data["node_id"]] = item
-
-            self._add_centered_text_block(
+            node_item = NodeItem(
                 x=data["x"],
                 y=data["y"],
-                line1=data["label"],
-                line2=f"{data['delay_ms']} ms",
-                radius=data["radius"]
+                radius=data["radius"],
+                color=data["color"],
+                label=data["label"],
+                node_id=data["node_id"],
+                delay_ms=data["delay_ms"],
             )
+            self.addItem(node_item)
+            self._node_items_by_id[data["node_id"]] = node_item
 
-    def draw_multiple_paths(self, path_dict):
-        for e in self.best_path_edges:
-            try:
-                self.removeItem(e)
-            except RuntimeError:
-                pass
-        self.best_path_edges.clear()
+            bg, lbl = self._create_background_label(
+                data["x"],
+                data["y"] + data["radius"] + 4,
+                "Server",
+            )
+            self._bg_label_items_by_id[data["node_id"]] = (bg, lbl)
 
-        color_map = {
-            "aco": ALGO_COLORS["aco"],
-            "random": ALGO_COLORS["random"],
-            "brute": ALGO_COLORS["brute"]
-        }
-        offset_map = {
-            "aco": (0, 0),
-            "random": (6, -6),
-            "brute": (-6, 6)
-        }
+    def _apply_positions_to_items(self):
+        """
+        Synchronises all QGraphicsItems to manager-defined coordinates and
+        updates attached text / edge geometry.
+        """
+        # Start node
+        if self.manager.start_node_data:
+            d = self.manager.start_node_data
+            itm = self._node_items_by_id.get(d["node_id"])
+            if itm:
+                itm.setPos(d["x"], d["y"])
 
-        for algo, info in path_dict.items():
-            node_ids = info.get("nodes", [])
-            if not node_ids:
+        # Hops
+        for h in self.manager.hop_nodes_data:
+            itm = self._node_items_by_id.get(h["node_id"])
+            if itm:
+                itm.setPos(h["x"], h["y"])
+
+        # End node
+        if self.manager.end_node_data:
+            d = self.manager.end_node_data
+            itm = self._node_items_by_id.get(d["node_id"])
+            if itm:
+                itm.setPos(d["x"], d["y"])
+
+        self._reposition_special_labels()
+
+        for e_item in self.static_edges + self.best_path_edges:
+            e_item.updateLine()
+
+    def _reposition_special_labels(self):
+        # Background labels (start / end) ────────────────────────────────
+        for node_id, (bg_rect, lbl_item) in self._bg_label_items_by_id.items():
+            node_itm = self._node_items_by_id.get(node_id)
+            if not node_itm:
                 continue
-            ox, oy = offset_map.get(algo, (0, 0))
-            pen_color = color_map.get(algo, "#000000")
-            seq = [self._node_items_by_id.get(nid) for nid in node_ids if self._node_items_by_id.get(nid)]
-            for a, b in zip(seq, seq[1:]):
-                x1, y1 = a.x + ox, a.y + oy
-                x2, y2 = b.x + ox, b.y + oy
-                edge = EdgeItem(x1, y1, x2, y2, color=pen_color, pen_width=3)
-                self.addItem(edge)
-                self.best_path_edges.append(edge)
+            cx, cy, r = node_itm.x, node_itm.y, node_itm.radius
+            bg_rect.setRect(cx - 25, cy + r, 50, 18)
+            lbl_bounds = lbl_item.boundingRect()
+            lbl_item.setPos(cx - lbl_bounds.width() / 2, cy + r + 1)
 
-    def update_heatmap(self, pheromone_matrix):
+        # Two-line hop labels ────────────────────────────────────────────
+        for node_id, (t1, t2) in self._hop_label_items_by_id.items():
+            node_itm = self._node_items_by_id.get(node_id)
+            if not node_itm:
+                continue
+            cx, cy = node_itm.x, node_itm.y
+            r1 = t1.boundingRect()
+            r2 = t2.boundingRect()
+            spacing = -9.0
+            total_h = r1.height() + r2.height() + spacing
+            top_y = cy - total_h / 2
+            t1.setPos(cx - r1.width() / 2, top_y)
+            t2.setPos(cx - r2.width() / 2, top_y + r1.height() + spacing)
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Heat-map
+    # ──────────────────────────────────────────────────────────────────────
+    def update_heatmap(self, pheromone_matrix: list[float]):
         if not pheromone_matrix:
             return
 
@@ -222,24 +284,38 @@ class GraphScene(QGraphicsScene):
 
         if self._gpu_is_ok:
             try:
-                from gui.graph_view.heatmap_generator import generate_heatmap_gl
                 scene_w = int(self.sceneRect().width())
                 scene_h = int(self.sceneRect().height())
                 pixmap = generate_heatmap_gl(
-                    pheromone_matrix, node_positions=node_positions,
-                    width=scene_w, height=scene_h
+                    pheromone_matrix,
+                    node_positions=node_positions,
+                    width=scene_w,
+                    height=scene_h,
                 )
             except Exception as e:
                 print(f"[GraphScene] GPU heatmap rendering failed: {e}")
                 pixmap = None
 
         if pixmap is None or pixmap.isNull():
-            from gui.graph_view.heatmap_generator import generate_heatmap
-            pixmap = generate_heatmap(pheromone_matrix, node_positions=node_positions, size_factor=1.25)
+            pixmap = generate_heatmap(
+                pheromone_matrix,
+                node_positions=node_positions,
+                size_factor=1.25,
+            )
 
         if pixmap is None or pixmap.isNull():
             return
 
+        self._invalidate_heatmap()
+        self._heatmap_item = QGraphicsPixmapItem(pixmap)
+        self._heatmap_item.setZValue(-9999)
+        self.addItem(self._heatmap_item)
+
+    def _invalidate_heatmap(self):
+        """
+        Removes existing heat-map so next backend update regenerates one that
+        matches the current scene size.
+        """
         if self._heatmap_item:
             try:
                 self.removeItem(self._heatmap_item)
@@ -247,21 +323,121 @@ class GraphScene(QGraphicsScene):
                 pass
             self._heatmap_item = None
 
-        self._heatmap_item = QGraphicsPixmapItem(pixmap)
-        self._heatmap_item.setZValue(-9999)
-        self.addItem(self._heatmap_item)
-
     def _ordered_node_positions(self):
+        """
+        Returns list whose index == node_id → (x, y) for heat-map input.
+        """
         all_nodes = []
         if self.manager.start_node_data:
             all_nodes.append(self.manager.start_node_data)
         all_nodes.extend(self.manager.hop_nodes_data)
         if self.manager.end_node_data:
             all_nodes.append(self.manager.end_node_data)
+
         if not all_nodes:
             return []
+
         max_id = max(nd["node_id"] for nd in all_nodes)
         positions = [(0.0, 0.0)] * (max_id + 1)
         for nd in all_nodes:
             positions[nd["node_id"]] = (nd["x"], nd["y"])
         return positions
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Label / background helpers (unchanged)
+    # ──────────────────────────────────────────────────────────────────────
+    def _create_hop_label_block(self, line1: str, line2: str):
+        font = QFont("Consolas", 7)
+        font.setBold(False)
+
+        t1 = QGraphicsTextItem(line1)
+        t1.setFont(font)
+        t1.setDefaultTextColor(Qt.white)
+        t1.setZValue(10)
+        t1.setCacheMode(QGraphicsTextItem.DeviceCoordinateCache)
+
+        t2 = QGraphicsTextItem(line2)
+        t2.setFont(font)
+        t2.setDefaultTextColor(Qt.white)
+        t2.setZValue(10)
+        t2.setCacheMode(QGraphicsTextItem.DeviceCoordinateCache)
+
+        return t1, t2
+
+    def _create_background_label(
+        self,
+        x: float,
+        y: float,
+        text: str,
+        bg_color: str = "#f5f5cc",
+        text_color=Qt.black,
+    ):
+        rect = QRectF(x - 25, y, 50, 18)
+        bg = QGraphicsRectItem(rect)
+        bg.setBrush(QBrush(QColor(bg_color)))
+        bg.setPen(QPen(Qt.NoPen))
+        bg.setZValue(5)
+        self.addItem(bg)
+
+        lbl = QGraphicsTextItem(text)
+        font = QFont("Consolas", 8)
+        lbl.setFont(font)
+        lbl.setDefaultTextColor(text_color)
+        lbl.setZValue(6)
+        lbl_bounds = lbl.boundingRect()
+        lbl.setPos(x - lbl_bounds.width() / 2, y + 1)
+        lbl.setCacheMode(QGraphicsTextItem.DeviceCoordinateCache)
+        self.addItem(lbl)
+
+        return bg, lbl
+
+    def draw_multiple_paths(self, path_dict):
+        """
+        Removes old best_path_edges, then draws the new paths.
+        Lines are placed **above** node circles for guaranteed visibility.
+        """
+        for e in self.best_path_edges:
+            try:
+                self.removeItem(e)
+            except RuntimeError:
+                pass
+        self.best_path_edges.clear()
+
+        color_map = {
+            "aco":    ALGO_COLORS["aco"],
+            "random": ALGO_COLORS["random"],
+            "brute":  ALGO_COLORS["brute"],
+        }
+        offset_map = {
+            "aco":    (0,   0),
+            "random": (6,  -6),
+            "brute":  (-6,  6),
+        }
+
+        for algo, info in path_dict.items():
+            node_ids = info.get("nodes", [])
+            if not node_ids:
+                continue
+
+            ox, oy   = offset_map.get(algo, (0, 0))
+            p_color  = color_map.get(algo, "#ffffff")
+
+            seq = [
+                self._node_items_by_id.get(nid)
+                for nid in node_ids
+                if self._node_items_by_id.get(nid)
+            ]
+            for a, b in zip(seq, seq[1:]):
+                edge = EdgeItem(
+                    a.x + ox,
+                    a.y + oy,
+                    b.x + ox,
+                    b.y + oy,
+                    color=p_color,
+                    pen_width=3,
+                    from_node=None,
+                    to_node=None,
+                )
+                edge.setZValue(2)            # ← sits above node circles
+                self.addItem(edge)
+                self.best_path_edges.append(edge)
