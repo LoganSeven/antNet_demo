@@ -34,7 +34,7 @@ jobs:
       - name: "Install Python dependencies"
         run: |
           python -m pip install --upgrade pip
-          pip install cffi pytest pycparser
+          pip install cffi pytest pycparser pillow
 
       - name: "Run full build pipeline"
         run: |
