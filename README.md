@@ -104,5 +104,5 @@ _“Please be kind with artificial life — one day, it could well be a good tim
 ## Version history
 0.0.1-alpha.1 MVP with mockup ant colony algorithm  
 0.0.2-alpha.1 MVP minimal gui interface and signal manager. Communication with c backend tested.  
-0.0.3-alpha.1 MVP topology updates between frontend and backend integrated. Tested with success.
-0.0.4-alpha.1 MVP The 3 main algo (stochastic ,brute force, ant colony optimization) are implemented and tested. 
+0.0.3-alpha.1 MVP topology updates between frontend and backend integrated. Tested with success.  
+0.0.4-alpha.1 MVP The 3 main algo (stochastic ,brute force, ant colony optimization) are implemented and tested.   
