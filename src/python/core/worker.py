@@ -1,63 +1,92 @@
 # src/python/core/worker.py
+"""
+Worker: handles backend C operations asynchronously in a separate thread.
+Can be initialized either from an INI config file (preferred for consistency),
+or from a provided AppConfig dictionary.
+"""
 
 import time
-from threading import Event
+from threading import Event, Lock
 from qtpy.QtCore import QObject
 
 from core.callback_adapter import QCCallbackToSignal
 from ffi.backend_api import AntNetWrapper
+from structs._generated.auto_structs import AppConfig
+
 
 class Worker(QObject):
     """
     Worker: handles backend C operations asynchronously in a separate thread.
-    Calls C functions via CFFI and emits Qt signals via a callback adapter.
+    Can be initialized either from an INI config file (preferred for consistency),
+    or from a provided AppConfig dictionary.
     """
 
-    def __init__(self):
+    def __init__(self, from_config: str | None = None, app_config: AppConfig | None = None):
         super().__init__()
         self._stop_event = Event()
+        self._ctx_lock = Lock()
+        self._topology_ready = False
+
         self.callback_adapter = QCCallbackToSignal()
 
-        # Initialize backend C context
-        self.backend = AntNetWrapper(node_count=10, min_hops=2, max_hops=5)
+        if from_config:
+            self.backend = AntNetWrapper(from_config=from_config)
+        else:
+            if app_config is None:
+                app_config = {
+                    "nb_swarms": 1,
+                    "set_nb_nodes": 64,
+                    "min_hops": 5,
+                    "max_hops": 32,
+                    "default_delay": 20,
+                    "death_delay": 9999,
+                    "under_attack_id": -1,
+                    "attack_started": False,
+                    "simulate_ddos": False,
+                    "show_random_performance": True,
+                    "show_brute_performance": True
+                }
+            self.backend = AntNetWrapper(app_config=app_config)
 
     def run(self):
         """
-        Main loop for backend processing.
+        Main loop for backend processing. Waits until topology is ready.
         """
         while not self._stop_event.is_set():
-            time.sleep(0.5)  # Control loop pacing
+            time.sleep(0.01)
 
-            # Run one iteration
-            self.backend.run_iteration()
+            if not self._topology_ready:
+                continue  # Wait until topology is updated
 
-            # Fetch best path
-            path_info = self.backend.get_best_path_struct()
+            try:
+                result_dict = self.backend.run_all_solvers()
+            except ValueError as e:
+                print(f"[ERROR][Worker] run_all_solvers failed: {e}")
+                continue
 
-            # Emit "best path updated"
-            if path_info is not None:
-                self.callback_adapter.on_best_path_callback(path_info)
+            # Retrieve pheromones under lock
+            with self._ctx_lock:
+                try:
+                    pheromones = self.backend.get_pheromone_matrix()
+                except ValueError:
+                    pheromones = []
 
-            # Emit "iteration done"
+            self.callback_adapter.on_best_path_callback(result_dict)
             self.callback_adapter.on_iteration_callback()
+            self.callback_adapter.on_pheromone_matrix_callback(pheromones)
 
     def stop(self):
-        """
-        Signal the worker to stop its main loop.
-        """
         self._stop_event.set()
 
     def shutdown_backend(self):
-        """
-        Shut down the backend if it exists.
-        """
         if self.backend is not None:
             self.backend.shutdown()
             self.backend = None
 
     def update_topology(self, nodes, edges):
         """
-        Update the topology in the backend context.
+        Push a new topology into the backend (node list and edge list).
         """
         if self.backend:
             self.backend.update_topology(nodes, edges)
+            self._topology_ready = True

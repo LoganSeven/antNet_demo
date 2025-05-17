@@ -6,18 +6,20 @@ from core.worker import Worker
 class CoreManager(QObject):
     """
     CoreManager: manages one or more Workers running in separate threads.
+    Can start workers either from an .ini config file or from default/app-provided configuration.
     """
 
     def __init__(self):
         super().__init__()
-        self.workers = []   # List of (Worker, QThread) pairs
+        self.workers = []  # List of (Worker, QThread) pairs
 
-    def start(self, num_workers=1):
+    def start(self, num_workers=1, from_config: str | None = None):
         """
         Start the specified number of Worker instances.
+        If from_config is provided, workers will load configuration from the given .ini file.
         """
         for _ in range(num_workers):
-            worker = Worker()
+            worker = Worker(from_config=from_config)
             thread = QThread()
 
             worker.moveToThread(thread)

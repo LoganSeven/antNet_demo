@@ -1,56 +1,54 @@
 import os
 from cffi import FFI
+from src.python.ffi.cdef_string import CDEF_SOURCE  # auto-generated structs + declarations
 
 ffi = FFI()
-
-# ---------- C header interface ----------
-# Matches the current backend.h and backend_topology.h:
-ffi.cdef(
-    """
-    // from backend.h
-    int antnet_initialize(int node_count, int min_hops, int max_hops);
-    int antnet_run_iteration(int context_id);
-    int antnet_shutdown(int context_id);
-    int antnet_get_best_path(
-        int context_id,
-        int* out_nodes,
-        int max_size,
-        int* out_path_len,
-        int* out_total_latency
-    );
-
-    // from backend_topology.h
-    typedef struct {
-        int node_id;
-        int delay_ms;
-    } NodeData;
-
-    typedef struct {
-        int from_id;
-        int to_id;
-    } EdgeData;
-
-    int antnet_update_topology(
-        int context_id,
-        const NodeData* nodes,
-        int num_nodes,
-        const EdgeData* edges,
-        int num_edges
-    );
-    """
-)
+ffi.cdef(CDEF_SOURCE)
 
 # ---------- Build instructions ----------
 this_dir    = os.path.dirname(__file__)
-lib_source  = os.path.abspath(os.path.join(this_dir, "../../c/backend.c"))
-topo_source = os.path.abspath(os.path.join(this_dir, "../../c/backend_topology.c"))
+src_c_dir   = os.path.abspath(os.path.join(this_dir, "../../c"))
 include_dir = os.path.abspath(os.path.join(this_dir, "../../../include"))
+ini_c       = os.path.join(this_dir, "../../../third_party/ini.c")
 
 ffi.set_source(
-    "backend_cffi",               # name of the generated module (.so/.pyd)
-    '#include "backend.h"',       # top-level header
-    sources=[lib_source, topo_source],  # the .c files to compile
-    include_dirs=[include_dir],         # directory for #include
+    "backend_cffi",
+    f"""#include "core/backend.h"
+#include "algo/cpu/cpu_ACOv1.h"
+#include "algo/cpu/cpu_brute_force.h"
+#include "algo/cpu/cpu_random_algo.h"
+#include "cffi_entrypoint.h"
+#include "consts/error_codes.h"
+#include "core/backend_thread_defs.h"
+#include "core/backend_topology.h"
+#include "managers/config_manager.h"
+#include "managers/hop_map_manager.h"
+#include "rendering/heatmap_renderer.h"
+#include "rendering/heatmap_renderer_async.h"
+#include "types/antnet_aco_v1_params.h"
+#include "types/antnet_aco_v1_types.h"
+#include "types/antnet_brute_force_types.h"
+#include "types/antnet_config_types.h"
+#include "types/antnet_network_types.h"
+#include "types/antnet_path_types.h"
+""",
+    sources=[
+        os.path.join(src_c_dir, "managers/config_manager.c"),
+        os.path.join(src_c_dir, "managers/hop_map_manager.c"),
+        os.path.join(src_c_dir, "core/backend.c"),
+        os.path.join(src_c_dir, "core/backend_topology.c"),
+        os.path.join(src_c_dir, "rendering/heatmap_renderer_async.c"),
+        os.path.join(src_c_dir, "rendering/heatmap_renderer.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_brute_force.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_random_algo.c"),
+        ini_c
+    ],
+    include_dirs=[
+        include_dir,
+        os.path.join(this_dir, "../../../third_party")
+    ],
+    libraries=["EGL", "GLESv2"],
 )
 
 if __name__ == "__main__":

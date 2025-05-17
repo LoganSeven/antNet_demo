@@ -1,21 +1,15 @@
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QScrollBar
+# src/python/gui/aco_visu_widget.py
+
+import sys
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QScrollBar, QApplication
 from qtpy.QtCore import Qt, QTimer, QEvent
 from qtpy.QtGui import QColor, QTextCharFormat
 
 import pyqtgraph as pg
+from pyqtgraph import PlotWidget
 import numpy as np
 
-opengl_available = False
-try:
-    from pyqtgraph.opengl import GLViewWidget
-    import OpenGL.GL as gl
-    version = gl.glGetString(gl.GL_VERSION)
-    if version:
-        print(f"OpenGL version detected: {version.decode()}")
-        opengl_available = True
-except Exception as e:
-    print(f"OpenGL unavailable or unsupported: {e}")
-    from pyqtgraph import PlotWidget
+from gui.consts.gui_consts import ALGO_COLORS
 
 
 class AcoVisuWidget(QWidget):
@@ -28,17 +22,12 @@ class AcoVisuWidget(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        if opengl_available:
-            print("Using GLViewWidget (OpenGL)")
-            self.graph_widget = GLViewWidget()
-        else:
-            print("Using PlotWidget (2D fallback)")
-            self.graph_widget = pg.PlotWidget()
-            self.graph_widget.setBackground('w')
-            self.graph_widget.showGrid(x=True, y=True, alpha=0.3)
-            self.graph_widget.getAxis('left').setPen(pg.mkPen(color='k'))
-            self.graph_widget.getAxis('bottom').setPen(pg.mkPen(color='k'))
-
+        # Always use 2D PlotWidget
+        self.graph_widget = PlotWidget()
+        self.graph_widget.setBackground('w')
+        self.graph_widget.showGrid(x=True, y=True, alpha=0.3)
+        self.graph_widget.getAxis('left').setPen(pg.mkPen(color='k'))
+        self.graph_widget.getAxis('bottom').setPen(pg.mkPen(color='k'))
         self.graph_widget.setMinimumWidth(200)
 
         self.text_area = QTextEdit()
@@ -98,11 +87,6 @@ class AcoVisuWidget(QWidget):
     def draw_demo_graph(self):
         print("Drawing demo graph...")
 
-        if opengl_available:
-            self.text_area.setPlainText("3D graph rendering not implemented in demo mode.")
-            print("Skipped drawing: OpenGL mode not implemented for demo.")
-            return
-
         self.graph_widget.clear()
 
         node_counts = np.arange(5, 55, 5)
@@ -117,20 +101,23 @@ class AcoVisuWidget(QWidget):
         print(f"Random times: {rand_times}")
 
         self.curve_performance_aco = self.graph_widget.plot(
-            node_counts, aco_times,
-            pen=pg.mkPen('g', width=2),
+            node_counts,
+            aco_times,
+            pen=pg.mkPen(ALGO_COLORS["aco"], width=2),
             name="ACO"
         )
 
         self.curve_performance_brute = self.graph_widget.plot(
-            node_counts, brute_times,
-            pen=pg.mkPen('r', width=2, style=Qt.DashLine),
+            node_counts,
+            brute_times,
+            pen=pg.mkPen(ALGO_COLORS["brute"], width=2, style=Qt.DashLine),
             name="Brute Force"
         )
 
         self.curve_performance_random = self.graph_widget.plot(
-            node_counts, rand_times,
-            pen=pg.mkPen('y', width=2, style=Qt.DotLine),
+            node_counts,
+            rand_times,
+            pen=pg.mkPen(ALGO_COLORS["random"], width=2, style=Qt.DotLine),
             name="Random Pick"
         )
 
@@ -141,18 +128,12 @@ class AcoVisuWidget(QWidget):
         print("Demo graph rendered.")
 
     def addLog(self, message: str, color):
-        if isinstance(color, str):
-            try:
-                qcolor = QColor(color)
-                if not qcolor.isValid():
-                    raise ValueError("Invalid color string")
-            except Exception as e:
-                print(f"Invalid color string: {color}, error: {e}")
-                return
-        elif isinstance(color, QColor):
-            qcolor = color
-        else:
-            print(f"Invalid color type: {type(color)}")
+        try:
+            qcolor = QColor(color)
+            if not qcolor.isValid():
+                raise ValueError("Invalid color string")
+        except Exception as e:
+            print(f"Invalid color string: {color}, error: {e}")
             return
 
         cursor = self.text_area.textCursor()
@@ -176,12 +157,3 @@ class AcoVisuWidget(QWidget):
     def reloadLog(self):
         self.text_area.clear()
         cursor = self.text_area.textCursor()
-        for message, color_name in self.log_buffer:
-            qcolor = QColor(color_name)
-            fmt = QTextCharFormat()
-            fmt.setForeground(qcolor)
-            cursor.setCharFormat(fmt)
-            cursor.insertText(message + "\n")
-        self.text_area.setTextColor(QColor("black"))
-        if self._auto_scroll_enabled or self.text_area.verticalScrollBar().value() == self.text_area.verticalScrollBar().maximum():
-            self.text_area.moveCursor(cursor.End)

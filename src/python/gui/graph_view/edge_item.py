@@ -1,8 +1,9 @@
-# src/python/gui/graph_view/edge_item.py
+# Relative Path: src/python/gui/graph_view/edge_item.py
 
 from qtpy.QtWidgets import QGraphicsLineItem
 from qtpy.QtGui import QPen, QColor
 from qtpy.QtCore import Qt
+
 
 class EdgeItem(QGraphicsLineItem):
     """
@@ -15,5 +16,10 @@ class EdgeItem(QGraphicsLineItem):
         self.to_node   = to_node
 
         pen = QPen(QColor(color))
-        pen.setWidth(pen_width)
+        pen.setWidthF(float(pen_width))
+        pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
+        pen.setCosmetic(True)  # thickness remains constant when zooming
         self.setPen(pen)
+
+        self.setZValue(-1)  # ensure it's behind nodes

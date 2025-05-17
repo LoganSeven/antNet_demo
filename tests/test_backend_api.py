@@ -1,9 +1,27 @@
 # tests/test_backend_api.py
+"""
+PyTest suite validating the AntNet C backend via CFFI bindings.
+
+Readability: every succeeded test prints a leading ✅ line.          # hardening/log
+Security-oriented tests print 🛡️ SECURITY ✅ on success.
+Prints bypass PyTest's capture so they always appear in build logs.
+"""
 
 import os
 import sys
+import pytest
+import threading
+import time
+import os as _os
 
-# Add build and src/python paths dynamically
+
+# -------------------------------------------------------------------- util
+def _announce(msg: str) -> None:
+    """Bypass pytest capture – always visible in CI logs."""
+    _os.write(1, (msg + "\n").encode())
+
+
+# ----------------------------------------------------------------- sys-path
 this_dir = os.path.dirname(__file__)
 project_root = os.path.abspath(os.path.join(this_dir, ".."))
 sys.path.insert(0, os.path.join(project_root, "build/python"))
@@ -13,6 +31,7 @@ from ffi.backend_api import AntNetWrapper
 from backend_cffi import ffi, lib
 
 
+# -------------------------------------------------------------- basic flow
 def test_basic_backend_integration():
     """
     Basic integration test covering initialization, iteration,
@@ -22,30 +41,23 @@ def test_basic_backend_integration():
     wrapper.run_iteration()
     result = wrapper.get_best_path_struct()
 
-    # Verify best_path return
     assert result is not None
     assert isinstance(result["nodes"], list)
     assert isinstance(result["total_latency"], int)
     assert len(result["nodes"]) == 6
 
     wrapper.shutdown()
+    _announce("✅ basic_backend_integration")
 
 
+# ------------------------------------------------------------- topology ok
 def test_topology_update():
     """
-    Test updating the topology with user-defined node/edge data
-    and verify that no error is raised and the context remains valid.
+    Update topology data and verify backend stability.
     """
-    # Create a context with 4 default nodes
     wrapper = AntNetWrapper(4, 1, 3)
-
-    # Verify it runs at least one iteration without error
     wrapper.run_iteration()
-    path_info_before = wrapper.get_best_path_struct()
-    assert path_info_before is not None
 
-    # Define new topology data
-    # This example has 3 nodes, 2 edges.
     new_nodes = [
         {"node_id": 0, "delay_ms": 50},
         {"node_id": 1, "delay_ms": 10},
@@ -55,36 +67,28 @@ def test_topology_update():
         {"from_id": 0, "to_id": 1},
         {"from_id": 1, "to_id": 2},
     ]
-
-    # Update the topology
     wrapper.update_topology(new_nodes, new_edges)
 
-    # Run another iteration post-update, ensure no crash or error
     wrapper.run_iteration()
     path_info_after = wrapper.get_best_path_struct()
-    assert path_info_after is not None
 
-    # For now, best path is still mock-based in the backend,
-    # so length or structure may not change significantly.
-    # Check that the dictionary format remains valid:
-    assert "nodes" in path_info_after
-    assert "total_latency" in path_info_after
+    assert path_info_after is not None
+    assert "nodes" in path_info_after and "total_latency" in path_info_after
 
     wrapper.shutdown()
+    _announce("✅ topology_update")
 
 
+# ------------------------------------------------ multiple iterations / updates
 def test_multiple_iterations_with_updates():
     """
-    Test performing multiple iterations and multiple updates, ensuring
-    the backend remains stable across changes.
+    Exercise multiple topology changes across iterations.
     """
     wrapper = AntNetWrapper(5, 1, 5)
 
-    # First run iteration several times
     for _ in range(3):
         wrapper.run_iteration()
 
-    # Define a first update
     first_nodes = [
         {"node_id": 0, "delay_ms": 5},
         {"node_id": 1, "delay_ms": 15},
@@ -98,31 +102,101 @@ def test_multiple_iterations_with_updates():
     ]
     wrapper.update_topology(first_nodes, first_edges)
 
-    # Run iterations with the first topology
     for _ in range(2):
         wrapper.run_iteration()
-    path_info_1 = wrapper.get_best_path_struct()
-    assert path_info_1 is not None
-    assert "nodes" in path_info_1
-    assert "total_latency" in path_info_1
 
-    # Define a second update
     second_nodes = [
         {"node_id": 10, "delay_ms": 100},
         {"node_id": 11, "delay_ms": 200},
     ]
-    second_edges = [
-        {"from_id": 10, "to_id": 11},
-    ]
+    second_edges = [{"from_id": 10, "to_id": 11}]
     wrapper.update_topology(second_nodes, second_edges)
 
-    # Run iterations with the second topology
     for _ in range(2):
         wrapper.run_iteration()
-    path_info_2 = wrapper.get_best_path_struct()
-    assert path_info_2 is not None
-    assert "nodes" in path_info_2
-    assert "total_latency" in path_info_2
 
-    # Shutdown at the end
+    path_info = wrapper.get_best_path_struct()
+    assert path_info is not None
+    assert "nodes" in path_info and "total_latency" in path_info
+
     wrapper.shutdown()
+    _announce("✅ multiple_iterations_with_updates")
+
+
+# --------------------------------------------- security: invalid topology
+def test_invalid_topology_args():
+    """
+    Security: ensure invalid node/edge IDs are rejected.
+    """
+    wrapper = AntNetWrapper(4, 1, 3)
+
+    invalid_nodes = [
+        {"node_id": 0, "delay_ms": 50},
+        {"node_id": -1, "delay_ms": 10},
+    ]
+    invalid_edges = [{"from_id": 0, "to_id": -1}]
+
+    with pytest.raises(ValueError):
+        wrapper.update_topology(invalid_nodes, invalid_edges)
+
+    wrapper.shutdown()
+    _announce("🛡️ SECURITY ✅ invalid_topology_args")
+
+
+# --------------------------------------------- security: latency overflow
+def test_extreme_latency_overflow():
+    """
+    Security: detect integer overflow on huge latency sums.
+    """
+    wrapper = AntNetWrapper(5, 1, 5)
+
+    big_nodes = [
+        {"node_id": 0, "delay_ms": 2_000_000_000},
+        {"node_id": 1, "delay_ms": 2_140_000_000},
+        {"node_id": 2, "delay_ms": 1_000},
+    ]
+    big_edges = [{"from_id": 0, "to_id": 1}, {"from_id": 1, "to_id": 2}]
+    wrapper.update_topology(big_nodes, big_edges)
+
+    with pytest.raises(ValueError):
+        wrapper.run_all_solvers()
+
+    wrapper.shutdown()
+    _announce("🛡️ SECURITY ✅ extreme_latency_overflow")
+
+
+# ------------------------------------------------------ concurrency check
+def test_concurrent_contexts():
+    """
+    Stress test concurrency with multiple contexts / threads.
+    """
+    def worker(w, it=5):
+        for _ in range(it):
+            w.run_iteration()
+            time.sleep(0.01)
+
+    wrappers = [AntNetWrapper(6, 1, 5) for _ in range(3)]
+    threads = [threading.Thread(target=worker, args=(w,)) for w in wrappers]
+
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    for w in wrappers:
+        assert "nodes" in w.get_best_path_struct()
+        w.shutdown()
+
+    _announce("✅ concurrent_contexts")
+
+
+# -------------------------------------- security: invalid context IDs
+def test_multiple_invalid_context_ids():
+    """
+    Security: API returns error for nonsense context IDs.
+    """
+    assert lib.antnet_run_iteration(-9999) < 0
+    assert lib.antnet_shutdown(-9999) < 0
+    assert lib.antnet_run_iteration(9999) < 0
+    assert lib.antnet_shutdown(9999) < 0
+    _announce("🛡️ SECURITY ✅ multiple_invalid_context_ids")

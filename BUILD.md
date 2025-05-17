@@ -2,145 +2,125 @@
 
 ## Overview
 
-This document describes the methods available to build the AntNet Demo project. It covers both manual steps and automated scripts for Linux/macOS and Windows environments.
+This document describes how to build and test the **AntNet Demo Project**, a C + Python application using CMake, multithreaded C backends (pthreads), and Python bindings via CFFI. The process is unified via a single script: `build.py`.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Prerequisites](#prerequisites)
+- [Recommended Workflow](#recommended-workflow)
+- [Manual Build Steps](#manual-build-steps)
+- [Windows Notes](#windows-notes)
+- [Cleaning Up](#cleaning-up)
+- [CI Integration](#ci-integration)
+- [Notes](#notes)
 
 ---
 
 ## Prerequisites
 
-Before building the project, ensure that the following tools and packages are installed and configured:
+Install the following:
 
-* **Python 3.12+** with a virtual environment
-* **pip** for Python package management
-* **CMake 3.10+**
-* **GCC** (or another compatible C compiler)
-* **Make** (if using Unix Makefiles)
-* **qtpy** and **PyQt5** Python packages
-* **cffi**, **setuptools**, and **pytest** Python packages
-* On Linux distributions: `qt5-default`, `libqt5gui5`, `libqt5core5a`, `libqt5widgets5` (for Qt runtime)
+| Requirement            | Linux/macOS                    | Windows                              |
+|------------------------|--------------------------------|--------------------------------------|
+| Python                 | 3.12+                          | 3.12+ via [python.org](https://www.python.org) |
+| pip                    | latest                         | included with Python                 |
+| C compiler             | gcc, clang                     | MSYS2 with gcc / MinGW-w64           |
+| CMake                  | 3.10+                          | [cmake.org](https://cmake.org)       |
+| Make (or Ninja)        | included on Linux              | part of MSYS2 or Git Bash            |
+| Qt Runtime (optional)  | `qt5-default`, `libqt5widgets5`| Install via pip (`PyQt5`) or [Qt installer](https://www.qt.io/download) |
 
----
-
-## Manual Build Steps
-
-Follow these steps from the project root directory (`antnet-demo/`):
-
-1. **Activate the Python virtual environment**
-
-   ```bash
-   source venv/bin/activate
-   ```
-
-2. **Install Python dependencies**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Configure and build the C backend**
-
-   ```bash
-   mkdir -p build
-   cmake -S . -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug
-   cmake --build build
-   ```
-
-4. **Build the Python CFFI bindings**
-
-   ```bash
-   cd src/python/ffi
-   python3 ffi_build.py
-   cd ../../..
-   ```
-
-5. **Copy the compiled CFFI module**
-
-   ```bash
-   mkdir -p src/python/ffi
-   cp build/python/backend_cffi*.so src/python/ffi/
-   ```
-
-6. **Run unit tests**
-
-   ```bash
-   python3 -m pytest tests/
-   ```
-
-7. **Launch the application**
-
-   ```bash
-   python3 main.py
-   ```
-
----
-
-## Automated Build Scripts
-
-The project includes two scripts to perform all build steps automatically.
-
-### Linux/macOS: `build.sh`
-
-1. Ensure the script is executable:
-
-   ```bash
-   chmod +x build.sh
-   ```
-
-2. Run the script:
-
-   ```bash
-   ./build.sh
-   ```
-
-This script will:
-
-* Configure and build the C backend with CMake
-* Build the Python CFFI bindings
-* Copy the compiled `.so` file
-* Run the unit tests
-
-### Windows: `build.bat`
-
-1. From Command Prompt or PowerShell, run:
-
-   ```bat
-   build.bat
-   ```
-
-This batch file will:
-
-* Configure and build the C backend with CMake
-* Build the Python CFFI bindings
-* Copy the compiled `.pyd` file
-* Run the unit tests
-
----
-
-## Cleaning Up
-
-To remove all generated files and return the project to a clean state, use the Makefile target or delete build directories manually.
-
-**Using Makefile** (if available):
+### Required Python packages
 
 ```bash
-make clean
-```
+pip install cffi pycparser pytest qtpy PyQt5
 
-**Manual cleanup**:
+Or:
 
-```bash
+pip install -r requirements.txt
+
+Recommended Workflow
+1. Create and activate virtual environment
+
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate.bat
+
+2. Install Python dependencies
+
+pip install -r requirements.txt
+
+3. Run the unified build script
+
+python build.py
+
+This will:
+
+    Compile the C backend with CMake
+
+    Preprocess headers using cpp (with stubbed pthread.h)
+
+    Generate the CDEF bindings using pycparser
+
+    Compile the CFFI Python extension
+
+    Run all unit tests with pytest
+
+Manual Build Steps
+
+You can reproduce the pipeline step by step:
+
+# C backend build
+mkdir -p build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+
+# Preprocess headers
+python src/python/ffi/preprocess_headers.py \
+  --headers include/cffi_entrypoint.h \
+  --outdir build/preprocessed \
+  --include ./stub_headers --include ./include \
+  --cpp-flag=-nostdinc --cpp-flag=-D__attribute__(...)= ...
+
+# Generate CDEF
+python src/python/ffi/generate_cffi_defs.py \
+  --preprocessed build/preprocessed \
+  --output src/python/ffi/cdef_string.py
+
+# Compile FFI
+python src/python/ffi/ffi_build.py
+
+# Run tests
+python -m pytest tests/
+
+Windows Notes
+
+On Windows, CFFI-based projects that rely on pthreads require a POSIX-compatible environment.
+Options:
+
+    MSYS2 (recommended)
+    Download from https://www.msys2.org
+    After installing, use:
+
+    pacman -S mingw-w64-x86_64-gcc make cmake
+
+    MinGW-w64 standalone
+    Available from https://www.mingw-w64.org/
+    May require manual setup of environment variables (PATH, CC, etc.)
+
+    Qt
+    If you need GUI support and qtpy is used:
+
+        Use pip install PyQt5 to satisfy bindings
+
+        Qt Designer and full runtime may be downloaded from https://www.qt.io/download
+
+CMake and Make are available via MSYS2, Git Bash, or Visual Studio build tools.
+Cleaning Up
+
+To remove all build artifacts:
+
 rm -rf build/
-find src/python/ffi -type f \( -name '*.so' -o -name '*.pyd' -o -name '*.o' -o -name '*.c' \) -delete
-```
+find src/python/ffi -type f
 
----
-
-## Notes
-
-* Always ensure that the virtual environment is activated when installing Python dependencies or running Python commands.
-* Adjust paths if you customize the project layout.
-* For a Windows environment, ensure that `venv\Scripts\activate.bat` is called before installing or running Python scripts.
-
----
-
-Last updated: by Logan7

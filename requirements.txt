@@ -4,12 +4,23 @@ numpy==2.2.5
 packaging==25.0
 pluggy==1.5.0
 pycparser==2.22
+
+# OpenGL bindings + accélération C
 PyOpenGL==3.1.9
-PyQt5==5.15.11
-PyQt5-Qt5==5.15.16
-PyQt5_sip==12.17.0
-pyqtgraph==0.13.7
+PyOpenGL_accelerate==3.1.9
+
+# Qt 6 bindings officiels Riverbank
+PyQt6==6.9.0
+PyQt6-Qt6==6.9.0        # runtime Qt 6 distribué avec PyQt6
+PyQt6_sip==13.10.0       # module SIP pour PyQt6
+
+# Abstraction et libs Qt-dépendantes
+QtPy==2.4.3              # supporte PyQt6/PySide6
+pyqtgraph==0.13.7        # compatible PyQt6
+
+# Tests
 pytest==8.3.5
-QtPy==2.4.3
+
+# Build/install helpers
 setuptools==80.1.0
 wheel==0.45.1
