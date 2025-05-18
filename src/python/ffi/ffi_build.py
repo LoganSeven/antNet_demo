@@ -15,6 +15,8 @@ ffi.set_source(
     "backend_cffi",
     f"""#include "core/backend.h"
 #include "algo/cpu/cpu_ACOv1.h"
+#include "algo/cpu/cpu_ACOv1_shared_structs.h"
+#include "algo/cpu/cpu_ACOv1_threaded.h"
 #include "algo/cpu/cpu_brute_force.h"
 #include "algo/cpu/cpu_random_algo.h"
 #include "cffi_entrypoint.h"
@@ -39,7 +41,9 @@ ffi.set_source(
         os.path.join(src_c_dir, "core/backend_topology.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer_async.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1_shared_structs.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_brute_force.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1_threaded.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_random_algo.c"),
         ini_c

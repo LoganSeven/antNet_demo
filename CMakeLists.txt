@@ -34,6 +34,8 @@ include_directories(
 # ------------------ Source files ----------------------------------
 set(SOURCE_FILES
     src/c/algo/cpu/cpu_ACOv1.c
+    src/c/algo/cpu/cpu_ACOv1_shared_structs.c
+    src/c/algo/cpu/cpu_ACOv1_threaded.c
     src/c/algo/cpu/cpu_brute_force.c
     src/c/algo/cpu/cpu_random_algo.c
     src/c/core/backend.c
