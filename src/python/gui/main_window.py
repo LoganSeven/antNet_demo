@@ -194,6 +194,8 @@ class MainWindow(QMainWindow):
             )
             adapter.signal_iteration_done.connect(self.on_iteration_done)
             adapter.signal_pheromone_matrix.connect(self.on_pheromone_matrix)
+            adapter.signal_ranking_updated.connect(self.on_ranking_updated)
+
 
     def showEvent(self, event):
         if self._first_show:
@@ -222,9 +224,9 @@ class MainWindow(QMainWindow):
                     print(f"[DEBUG] {algo_label} path: {nodes}")
                     latency = data.get("total_latency", 0)
                     previous_latency = self.last_logged_latencies[algo_key]
-                    if previous_latency is None or previous_latency != latency:
-                        self.aco_visu.addLog(f"{algo_label}: {latency}", ALGO_COLORS[algo_key])
-                        self.last_logged_latencies[algo_key] = latency
+                    #if previous_latency is None or previous_latency != latency:
+                    #    self.aco_visu.addLog(f"{algo_label}: {latency}", ALGO_COLORS[algo_key])
+                    #    self.last_logged_latencies[algo_key] = latency
         self.graph_canvas.scene.draw_multiple_paths(path_info)
 
     def on_iteration_done(self):
@@ -278,3 +280,8 @@ class MainWindow(QMainWindow):
     def on_pheromone_matrix(self, matrix: list[float]):
         print(f"[DEBUG] on_pheromone_matrix called with size={len(matrix)}")
         self.graph_canvas.scene.update_heatmap(matrix)
+
+    def on_ranking_updated(self, ranking: list):
+        print(f"[DEBUG] on_ranking_updated received: {ranking}")
+        self.aco_visu.showRanking(ranking)
+

@@ -80,6 +80,19 @@ typedef struct {
 } AcoV1State;
 typedef struct HeatmapRenderer HeatmapRenderer;
 typedef struct {
+    double best_L;
+    int last_improve_iter;
+    int m;
+    double sum_tau;
+    double sum_r;
+    double score;
+} SasaState;
+typedef struct {
+    char name[8];
+    double score;
+    int latency_ms;
+} RankingEntry;
+typedef struct {
     int node_count;
     int min_hops;
     int max_hops;
@@ -101,6 +114,9 @@ typedef struct {
     int aco_best_length;
     int aco_best_latency;
     AcoV1State aco_v1;
+    SasaState aco_sasa;
+    SasaState random_sasa;
+    SasaState brute_sasa;
 } AntNetContext;
 typedef struct {
     pthread_mutex_t lock;
@@ -120,6 +136,10 @@ void hr_destroy(HeatmapRenderer *hr);
 int hr_renderer_start(int width, int height);
 int hr_renderer_stop(void);
 int hr_enqueue_render(const float *pts_xy, const float *strength, int n, unsigned char *out_rgba, int width, int height);
+void init_sasa_state(SasaState *state);
+void update_on_improvement(int iter_idx, double new_latency, SasaState *state, double alpha, double beta, double gamma);
+void recalc_sasa_score(SasaState *state, int iter_idx, double alpha, double beta, double gamma);
+void compute_ranking(const SasaState *states, int count, int *rank_out);
 int antnet_initialize(int node_count, int min_hops, int max_hops);
 int antnet_run_iteration(int context_id);
 int antnet_shutdown(int context_id);
@@ -131,6 +151,7 @@ int antnet_get_pheromone_matrix(int context_id, float *out, int max_count);
 int antnet_render_heatmap_rgba(const float *pts_xy, const float *strength, int n, unsigned char *out_rgba, int width, int height);
 int antnet_renderer_async_init(int initial_width, int initial_height);
 int antnet_renderer_async_shutdown(void);
+int antnet_get_algo_ranking(int context_id, RankingEntry *out, int max_count);
 int antnet_update_topology(int context_id, const NodeData *nodes, int num_nodes, const EdgeData *edges, int num_edges);
 int random_search_path(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);
 int brute_force_search_step(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);

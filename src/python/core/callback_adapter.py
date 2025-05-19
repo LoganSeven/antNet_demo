@@ -10,8 +10,10 @@ class QCCallbackToSignal(QObject):
     signal_best_path_updated = Signal(object)  # e.g., path_info dict
     signal_iteration_done = Signal()
 
-    # NEW: signal to pass the pheromone matrix as a Python list[float]
+    # Signal to pass the pheromone matrix as a Python list[float]
     signal_pheromone_matrix = Signal(list)
+    # Signal to pass the ranking of algos
+    signal_ranking_updated  = Signal(list)
 
     def __init__(self):
         super().__init__()

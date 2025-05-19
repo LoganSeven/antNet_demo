@@ -84,6 +84,16 @@ class AcoVisuWidget(QWidget):
         if not self._mouse_pressed:
             self._auto_scroll_enabled = True
 
+    def showRanking(self, ranking_list: list[dict]):
+        """Clear and print 3-line ranking (color-coded)."""
+        self.clearLog()
+        for entry in ranking_list[:3]:
+            name   = entry["name"]
+            color  = ALGO_COLORS.get(name.lower(), "#000000")
+            score  = entry["score"]
+            lat_ms = entry["latency_ms"]
+            self.addLog(f"{name} | score: {score:.3f} | latency: {lat_ms} ms", color)
+
     def draw_demo_graph(self):
         print("Drawing demo graph...")
 

@@ -74,6 +74,11 @@ class Worker(QObject):
             self.callback_adapter.on_best_path_callback(result_dict)
             self.callback_adapter.on_iteration_callback()
             self.callback_adapter.on_pheromone_matrix_callback(pheromones)
+            try:
+                ranking = self.backend.get_algo_ranking()
+                self.callback_adapter.signal_ranking_updated.emit(ranking)
+            except Exception as e:
+                print(f"[ERROR][Worker] Failed to emit ranking: {e}")
 
     def stop(self):
         self._stop_event.set()
