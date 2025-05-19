@@ -7,7 +7,7 @@
 #include "../../../include/core/backend.h"
 #include "../../../include/managers/cpu_acoV1_algo_manager.h"
 #include "../../../include/algo/cpu/cpu_ACOv1.h"
-#include <string.h>
+
 
 /* aco_algo_manager_init
  * Initializes the ACO solver (if needed).
