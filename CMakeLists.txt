@@ -39,6 +39,9 @@ set(SOURCE_FILES
     src/c/algo/cpu/cpu_brute_force.c
     src/c/algo/cpu/cpu_random_algo.c
     src/c/core/backend.c
+    src/c/core/backend_init.c
+    src/c/core/backend_params.c
+    src/c/core/backend_solvers.c
     src/c/core/backend_topology.c
     src/c/core/score_evaluation.c
     src/c/managers/config_manager.c
