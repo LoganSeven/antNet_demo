@@ -1,6 +1,4 @@
-
-
-# src/python/gui/main_window.py
+# Relative Path: src/python/gui/main_window.py
 """
 MainWindow sets up the GUI layout, starts the CoreManager (which spins up the Workers),
 and connects signals for solver results to be drawn in the GraphScene.
@@ -52,7 +50,6 @@ class MainWindow(QMainWindow):
         }
 
         # Initialize the async renderer with a small default size
-        # (it can adapt to bigger sizes on first job).
         init_async_renderer(width=64, height=64)
 
         # Attempt a small test for the renderer
@@ -62,7 +59,6 @@ class MainWindow(QMainWindow):
             pts_xy = [-0.8, -0.8, -0.5, -0.5, -0.2, -0.2, 0.0, 0.0, 0.2, 0.2,
                       0.4, 0.4, 0.6, 0.6, 0.8, 0.8, -0.6, 0.6, 0.6, -0.6]
             strength = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-
             w, h = 50, 50
             out = render_heatmap_rgba(pts_xy, strength, w, h)
 
@@ -165,26 +161,28 @@ class MainWindow(QMainWindow):
         # Now start the workers (which create contexts in the C backend) from .ini config
         self.core_manager.start(num_workers=1, from_config="config/settings.ini")
 
-        # Retrieve the backend config to see how many nodes are configured
+        # Retrieve the backend config to see how many nodes and delay range are configured
         config_data = self.core_manager.workers[0][0].backend.get_config()
         nb_nodes = config_data["set_nb_nodes"]
+        min_delay = config_data["default_min_delay"]
+        max_delay = config_data["default_max_delay"]
+
+        # Update the scene's HopMapManager with the new delay range
+        self.graph_canvas.scene.hop_map_manager.set_delay_range(min_delay, max_delay)
 
         # Initialize the scene with the configured number of nodes
         self.graph_canvas.scene.init_scene_with_nodes(nb_nodes)
 
-        # Create a default chain of edges after the nodes are created
+        # Create a default chain of edges
         self.graph_canvas.scene.create_default_edges()
 
-        # Render manager edges and immediately push full topology to backend
+        # Render manager edges and push full topology to backend
         self.graph_canvas.scene.render_manager_edges()
 
         # Auto-inject topology once everything is ready
         topology_data = self.graph_canvas.scene.export_graph_topology()
         print("[DEBUG] Auto-injecting initial topology to CoreManager...")
         self.core_manager.update_topology(topology_data)
-
-
-
 
         # Connect signals from the workers
         adapters = self.core_manager.get_callback_adapters()
@@ -195,7 +193,6 @@ class MainWindow(QMainWindow):
             adapter.signal_iteration_done.connect(self.on_iteration_done)
             adapter.signal_pheromone_matrix.connect(self.on_pheromone_matrix)
             adapter.signal_ranking_updated.connect(self.on_ranking_updated)
-
 
     def showEvent(self, event):
         if self._first_show:
@@ -224,9 +221,10 @@ class MainWindow(QMainWindow):
                     print(f"[DEBUG] {algo_label} path: {nodes}")
                     latency = data.get("total_latency", 0)
                     previous_latency = self.last_logged_latencies[algo_key]
-                    #if previous_latency is None or previous_latency != latency:
-                    #    self.aco_visu.addLog(f"{algo_label}: {latency}", ALGO_COLORS[algo_key])
-                    #    self.last_logged_latencies[algo_key] = latency
+                    # Optionally track or log latencies if changed
+                    # if previous_latency is None or previous_latency != latency:
+                    #     self.aco_visu.addLog(f"{algo_label}: {latency}", ALGO_COLORS[algo_key])
+                    #     self.last_logged_latencies[algo_key] = latency
         self.graph_canvas.scene.draw_multiple_paths(path_info)
 
     def on_iteration_done(self):
@@ -235,7 +233,6 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.core_manager.stop()
-        # Shutdown the async renderer
         shutdown_async_renderer()
         super().closeEvent(event)
 
@@ -284,4 +281,3 @@ class MainWindow(QMainWindow):
     def on_ranking_updated(self, ranking: list):
         print(f"[DEBUG] on_ranking_updated received: {ranking}")
         self.aco_visu.showRanking(ranking)
-

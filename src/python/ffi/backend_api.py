@@ -96,6 +96,15 @@ class AntNetWrapper:
 
     # ─────────────────────── configuration read ─────────────────────
     def get_config(self) -> AppConfig:
+        """
+        Returns the current AppConfig as a dict with new fields:
+          nb_ants, set_nb_nodes, min_hops, max_hops,
+          default_min_delay, default_max_delay, death_delay,
+          under_attack_id, attack_started,
+          simulate_ddos, show_random_performance, show_brute_performance,
+          ranking_alpha, ranking_beta, ranking_gamma,
+          ant_alpha, ant_beta, ant_Q, ant_evaporation
+        """
         if self.context_id is None:
             raise ValueError("No valid context_id")
         cfg_ptr = ffi.new("AppConfig*")
@@ -103,17 +112,25 @@ class AntNetWrapper:
         if rc != 0:
             raise ValueError(f"antnet_get_config failed with code {rc}")
         return {
-            "nb_swarms":              cfg_ptr.nb_swarms,
-            "set_nb_nodes":           cfg_ptr.set_nb_nodes,
-            "min_hops":               cfg_ptr.min_hops,
-            "max_hops":               cfg_ptr.max_hops,
-            "default_delay":          cfg_ptr.default_delay,
-            "death_delay":            cfg_ptr.death_delay,
-            "under_attack_id":        cfg_ptr.under_attack_id,
-            "attack_started":         bool(cfg_ptr.attack_started),
-            "simulate_ddos":          bool(cfg_ptr.simulate_ddos),
+            "nb_ants":               cfg_ptr.nb_ants,
+            "set_nb_nodes":          cfg_ptr.set_nb_nodes,
+            "min_hops":              cfg_ptr.min_hops,
+            "max_hops":              cfg_ptr.max_hops,
+            "default_min_delay":     cfg_ptr.default_min_delay,
+            "default_max_delay":     cfg_ptr.default_max_delay,
+            "death_delay":           cfg_ptr.death_delay,
+            "under_attack_id":       cfg_ptr.under_attack_id,
+            "attack_started":        bool(cfg_ptr.attack_started),
+            "simulate_ddos":         bool(cfg_ptr.simulate_ddos),
             "show_random_performance": bool(cfg_ptr.show_random_performance),
             "show_brute_performance":  bool(cfg_ptr.show_brute_performance),
+            "ranking_alpha":         float(cfg_ptr.ranking_alpha),
+            "ranking_beta":          float(cfg_ptr.ranking_beta),
+            "ranking_gamma":         float(cfg_ptr.ranking_gamma),
+            "ant_alpha":             float(cfg_ptr.ant_alpha),
+            "ant_beta":              float(cfg_ptr.ant_beta),
+            "ant_Q":                 float(cfg_ptr.ant_Q),
+            "ant_evaporation":       float(cfg_ptr.ant_evaporation),
         }
 
     # ────────────────────────── iteration ───────────────────────────

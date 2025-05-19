@@ -30,6 +30,11 @@ typedef struct {
 
     EdgeData *edges;
     size_t edge_count;
+
+    /* new fields for adjustable node delay range */
+    int default_min_delay;
+    int default_max_delay;
+
 } HopMapManager;
 
 /* Creates a new HopMapManager instance */
@@ -37,6 +42,9 @@ HopMapManager* hop_map_manager_create();
 
 /* Destroys and frees the HopMapManager */
 void hop_map_manager_destroy(HopMapManager *mgr);
+
+/* Allows setting the random delay range for node latencies. */
+void hop_map_manager_set_delay_range(HopMapManager *mgr, int min_delay, int max_delay);
 
 /* Initializes the map with total_nodes (start node + end node + hop_count).
  * If total_nodes is unchanged, it skips reallocation. */

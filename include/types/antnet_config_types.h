@@ -1,37 +1,52 @@
 /* Relative Path: include/types/antnet_config_types.h */
+#ifndef ANTNET_CONFIG_TYPES_H
+#define ANTNET_CONFIG_TYPES_H
 
-/* include/antnet_config_types.h */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdbool.h>
+
 /*
- * AppConfig: holds all configuration parameters used throughout the project.
- * The config_load and config_save functions manipulate these fields.
+ * AppConfig holds configuration fields from the .ini file.
+ * This struct is updated to reflect new names and additional fields.
  */
+typedef struct AppConfig
+{
+    /* [simulation] */
+    int nb_ants;         /* renamed from nb_swarms */
+    int set_nb_nodes;
+    int min_hops;
+    int max_hops;
 
- #ifndef ANTNET_CONFIG_TYPES_H
- #define ANTNET_CONFIG_TYPES_H
- 
- #include <stdbool.h>
- 
- #ifdef __cplusplus
- extern "C" {
- #endif
- 
- typedef struct {
-     int  nb_swarms;
-     int  set_nb_nodes;
-     int  min_hops;
-     int  max_hops;
-     int  default_delay;
-     int  death_delay;
-     int  under_attack_id;
-     bool attack_started;
-     bool simulate_ddos;
-     bool show_random_performance;
-     bool show_brute_performance;
- } AppConfig;
- 
- #ifdef __cplusplus
- }
- #endif
- 
- #endif /* ANTNET_CONFIG_TYPES_H */
- 
+    /* [node] */
+    int default_min_delay;
+    int default_max_delay;
+    int death_delay;
+    int under_attack_id;
+    bool attack_started;
+
+    /* [features] */
+    bool simulate_ddos;
+    bool show_random_performance;
+    bool show_brute_performance;
+
+    /* [ranking] */
+    double ranking_alpha;
+    double ranking_beta;
+    double ranking_gamma;
+
+    /* [ants] */
+    float ant_alpha;
+    float ant_beta;
+    float ant_Q;
+    float ant_evaporation;
+
+} AppConfig;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ANTNET_CONFIG_TYPES_H */

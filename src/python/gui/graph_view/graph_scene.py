@@ -1,3 +1,4 @@
+# Relative Path: src/python/gui/graph_view/graph_scene.py
 """
 GraphScene is responsible for visualizing the network graph (nodes and edges).
 It delegates topology structure to HopMapManager and focuses on Qt-based rendering.
@@ -19,7 +20,15 @@ from gui.consts.gui_consts import ALGO_COLORS
 from gui.managers.hop_map_manager import HopMapManager
 from gui.graph_view.heatmap_generator import *
 
+
 class GraphScene(QGraphicsScene):
+    """
+    GraphScene holds a HopMapManager for node/edge creation, but focuses on Qt-based
+    rendering of node items, edges, and heatmap overlays. The HopMapManager is
+    exposed as self.hop_map_manager so that external code can directly configure
+    delay ranges or topology updates.
+    """
+
     def __init__(self, width: int = 1000, height: int = 600, parent=None):
         super().__init__(parent)
         self.setSceneRect(0, 0, width, height)
@@ -27,30 +36,31 @@ class GraphScene(QGraphicsScene):
         # Match glClearColor(0.02, 0.02, 0.1, 1.0)
         self.setBackgroundBrush(QColor.fromRgbF(0.02, 0.02, 0.1, 1.0))
 
-        self.manager = HopMapManager()
+        self.hop_map_manager = HopMapManager()
 
-        # Caches ──────────────────────────────────────────────────────────────
+        # Caches
         self._node_items_by_id: dict[int, NodeItem] = {}
         self.best_path_edges:  list[EdgeItem]       = []
         self.static_edges:     list[EdgeItem]       = []
 
-        self._bg_label_items_by_id:  dict[int, tuple] = {}   # start / end
-        self._hop_label_items_by_id: dict[int, tuple] = {}   # hops
+        self._bg_label_items_by_id:  dict[int, tuple] = {}  # start / end
+        self._hop_label_items_by_id: dict[int, tuple] = {}  # hops
 
         self._heatmap_item: QGraphicsPixmapItem | None = None
         self._gpu_is_ok: bool = False
 
-    # ──────────────────────────────────────────────────────────────────────
-    # Public helpers
-    # ──────────────────────────────────────────────────────────────────────
     def set_gpu_ok(self, is_ok: bool):
+        """
+        Informs GraphScene whether the OpenGL-based heatmap renderer is valid.
+        If True, attempts to generate GPU-based heatmaps before falling back to CPU.
+        """
         self._gpu_is_ok = is_ok
 
     def init_scene_with_nodes(self, total_nodes: int):
         """
         (Re)initialises HopMapManager with `total_nodes`, then renders nodes.
         """
-        self.manager.initialize_map(total_nodes)
+        self.hop_map_manager.initialize_map(total_nodes)
         self._render_nodes()
 
     def recalc_node_positions(self, scene_width: float, scene_height: float):
@@ -59,16 +69,20 @@ class GraphScene(QGraphicsScene):
         Heat-map overlay is invalidated so the next backend update repaints it
         at the correct resolution.
         """
-        self.manager.recalc_positions(scene_width, scene_height)
+        self.hop_map_manager.recalc_positions(scene_width, scene_height)
         self._apply_positions_to_items()
         self._invalidate_heatmap()
 
     def create_default_edges(self):
-        self.manager.create_default_edges()
+        """
+        Calls hop_map_manager.create_default_edges() and defers final drawing
+        to render_manager_edges().
+        """
+        self.hop_map_manager.create_default_edges()
 
     def render_manager_edges(self):
         """
-        Clears & re-creates static (transparent) edges from manager data.
+        Clears & re-creates static (transparent) edges from the hop_map_manager data.
         """
         for e_item in self.static_edges:
             try:
@@ -77,7 +91,8 @@ class GraphScene(QGraphicsScene):
                 pass
         self.static_edges.clear()
 
-        for edge_data in self.manager.edges_data:
+        # For each edge, we create a QGraphics item
+        for edge_data in self.hop_map_manager.edges_data:
             from_node = self._node_items_by_id.get(edge_data["from_id"])
             to_node   = self._node_items_by_id.get(edge_data["to_id"])
             if not from_node or not to_node:
@@ -96,28 +111,27 @@ class GraphScene(QGraphicsScene):
             self.static_edges.append(edge_item)
 
     def export_graph_topology(self):
-        return self.manager.export_graph_topology()
+        """
+        Exports the current node+edge data from the hop_map_manager.
+        """
+        return self.hop_map_manager.export_graph_topology()
 
-    # ──────────────────────────────────────────────────────────────────────
-    #  NEW — runtime node insertion
-    # ──────────────────────────────────────────────────────────────────────
     def add_rendered_nodes(self, new_hops: list[dict]):
         """
-        Called by SignalManager after HopMapManager.add_hops().  
+        Called by SignalManager after HopMapManager.add_hops().
         Creates QGraphicsItems for each new hop, then triggers a full layout
         recalculation so **all** nodes (old + new) snap to the updated grid.
         """
         if not new_hops:
             return
 
-        # Create graphics for each new hop
         for data in new_hops:
             node_item = NodeItem(
                 x=data["x"],
                 y=data["y"],
                 radius=data["radius"],
                 color=data["color"],
-                label="",                       # two-line label is added below
+                label="",
                 node_id=data["node_id"],
                 delay_ms=data["delay_ms"],
             )
@@ -132,17 +146,16 @@ class GraphScene(QGraphicsScene):
             self.addItem(text1)
             self.addItem(text2)
 
-        # Re-lay out every node in the enlarged grid
         w = self.sceneRect().width()
         h = self.sceneRect().height()
         self.recalc_node_positions(w, h)
 
-    # ──────────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────
     # Private rendering helpers
-    # ──────────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────
     def _render_nodes(self):
         """
-        Clears scene and renders all nodes (start, hops, end) from manager.
+        Clears scene and renders all nodes (start, hops, end) from hop_map_manager.
         """
         self.best_path_edges.clear()
         self.static_edges.clear()
@@ -151,9 +164,9 @@ class GraphScene(QGraphicsScene):
         self._hop_label_items_by_id.clear()
         self.clear()
 
-        # Start node ──────────────────────────────────────────────────────
-        if self.manager.start_node_data:
-            data = self.manager.start_node_data
+        # Start node
+        if self.hop_map_manager.start_node_data:
+            data = self.hop_map_manager.start_node_data
             node_item = NodeItem(
                 x=data["x"],
                 y=data["y"],
@@ -173,14 +186,14 @@ class GraphScene(QGraphicsScene):
             )
             self._bg_label_items_by_id[data["node_id"]] = (bg, lbl)
 
-        # Hop nodes ───────────────────────────────────────────────────────
-        for data in self.manager.hop_nodes_data:
+        # Hop nodes
+        for data in self.hop_map_manager.hop_nodes_data:
             node_item = NodeItem(
                 x=data["x"],
                 y=data["y"],
                 radius=data["radius"],
                 color=data["color"],
-                label="",                      # two-line label below
+                label="",
                 node_id=data["node_id"],
                 delay_ms=data["delay_ms"],
             )
@@ -195,9 +208,9 @@ class GraphScene(QGraphicsScene):
             self.addItem(t1)
             self.addItem(t2)
 
-        # End node ────────────────────────────────────────────────────────
-        if self.manager.end_node_data:
-            data = self.manager.end_node_data
+        # End node
+        if self.hop_map_manager.end_node_data:
+            data = self.hop_map_manager.end_node_data
             node_item = NodeItem(
                 x=data["x"],
                 y=data["y"],
@@ -219,25 +232,25 @@ class GraphScene(QGraphicsScene):
 
     def _apply_positions_to_items(self):
         """
-        Synchronises all QGraphicsItems to manager-defined coordinates and
+        Synchronises all QGraphicsItems to hop_map_manager-defined coordinates and
         updates attached text / edge geometry.
         """
         # Start node
-        if self.manager.start_node_data:
-            d = self.manager.start_node_data
+        if self.hop_map_manager.start_node_data:
+            d = self.hop_map_manager.start_node_data
             itm = self._node_items_by_id.get(d["node_id"])
             if itm:
                 itm.setPos(d["x"], d["y"])
 
         # Hops
-        for h in self.manager.hop_nodes_data:
+        for h in self.hop_map_manager.hop_nodes_data:
             itm = self._node_items_by_id.get(h["node_id"])
             if itm:
                 itm.setPos(h["x"], h["y"])
 
         # End node
-        if self.manager.end_node_data:
-            d = self.manager.end_node_data
+        if self.hop_map_manager.end_node_data:
+            d = self.hop_map_manager.end_node_data
             itm = self._node_items_by_id.get(d["node_id"])
             if itm:
                 itm.setPos(d["x"], d["y"])
@@ -248,7 +261,7 @@ class GraphScene(QGraphicsScene):
             e_item.updateLine()
 
     def _reposition_special_labels(self):
-        # Background labels (start / end) ────────────────────────────────
+        # Background labels (start / end)
         for node_id, (bg_rect, lbl_item) in self._bg_label_items_by_id.items():
             node_itm = self._node_items_by_id.get(node_id)
             if not node_itm:
@@ -258,7 +271,7 @@ class GraphScene(QGraphicsScene):
             lbl_bounds = lbl_item.boundingRect()
             lbl_item.setPos(cx - lbl_bounds.width() / 2, cy + r + 1)
 
-        # Two-line hop labels ────────────────────────────────────────────
+        # Two-line hop labels
         for node_id, (t1, t2) in self._hop_label_items_by_id.items():
             node_itm = self._node_items_by_id.get(node_id)
             if not node_itm:
@@ -272,10 +285,14 @@ class GraphScene(QGraphicsScene):
             t1.setPos(cx - r1.width() / 2, top_y)
             t2.setPos(cx - r2.width() / 2, top_y + r1.height() + spacing)
 
-    # ──────────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────
     # Heat-map
-    # ──────────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────
     def update_heatmap(self, pheromone_matrix: list[float]):
+        """
+        Called by solver signals to refresh or generate a new heatmap overlay,
+        layering below all nodes & edges (ZValue=-9999).
+        """
         if not pheromone_matrix:
             return
 
@@ -312,10 +329,6 @@ class GraphScene(QGraphicsScene):
         self.addItem(self._heatmap_item)
 
     def _invalidate_heatmap(self):
-        """
-        Removes existing heat-map so next backend update regenerates one that
-        matches the current scene size.
-        """
         if self._heatmap_item:
             try:
                 self.removeItem(self._heatmap_item)
@@ -328,11 +341,11 @@ class GraphScene(QGraphicsScene):
         Returns list whose index == node_id → (x, y) for heat-map input.
         """
         all_nodes = []
-        if self.manager.start_node_data:
-            all_nodes.append(self.manager.start_node_data)
-        all_nodes.extend(self.manager.hop_nodes_data)
-        if self.manager.end_node_data:
-            all_nodes.append(self.manager.end_node_data)
+        if self.hop_map_manager.start_node_data:
+            all_nodes.append(self.hop_map_manager.start_node_data)
+        all_nodes.extend(self.hop_map_manager.hop_nodes_data)
+        if self.hop_map_manager.end_node_data:
+            all_nodes.append(self.hop_map_manager.end_node_data)
 
         if not all_nodes:
             return []
@@ -343,9 +356,9 @@ class GraphScene(QGraphicsScene):
             positions[nd["node_id"]] = (nd["x"], nd["y"])
         return positions
 
-    # ──────────────────────────────────────────────────────────────────────
-    # Label / background helpers (unchanged)
-    # ──────────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────
+    # Label / background helpers
+    # ─────────────────────────────────────────────────────────────────
     def _create_hop_label_block(self, line1: str, line2: str):
         font = QFont("Consolas", 7)
         font.setBold(False)
@@ -438,6 +451,6 @@ class GraphScene(QGraphicsScene):
                     from_node=None,
                     to_node=None,
                 )
-                edge.setZValue(2)            # ← sits above node circles
+                edge.setZValue(2)
                 self.addItem(edge)
                 self.best_path_edges.append(edge)

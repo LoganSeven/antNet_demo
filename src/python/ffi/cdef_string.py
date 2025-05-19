@@ -12,17 +12,25 @@ typedef struct {
     int to_id;
 } EdgeData;
 typedef struct {
-    int nb_swarms;
+    int nb_ants;
     int set_nb_nodes;
     int min_hops;
     int max_hops;
-    int default_delay;
+    int default_min_delay;
+    int default_max_delay;
     int death_delay;
     int under_attack_id;
     _Bool attack_started;
     _Bool simulate_ddos;
     _Bool show_random_performance;
     _Bool show_brute_performance;
+    double ranking_alpha;
+    double ranking_beta;
+    double ranking_gamma;
+    float ant_alpha;
+    float ant_beta;
+    float ant_Q;
+    float ant_evaporation;
 } AppConfig;
 typedef struct {
     int candidate_nodes[1024];
@@ -132,6 +140,8 @@ typedef struct {
     size_t hop_count;
     EdgeData *edges;
     size_t edge_count;
+    int default_min_delay;
+    int default_max_delay;
 } HopMapManager;
 
 
@@ -175,6 +185,7 @@ _Bool config_save(const AppConfig *cfg, const char *filepath);
 void config_set_defaults(AppConfig *cfg);
 HopMapManager *hop_map_manager_create();
 void hop_map_manager_destroy(HopMapManager *mgr);
+void hop_map_manager_set_delay_range(HopMapManager *mgr, int min_delay, int max_delay);
 void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes);
 void hop_map_manager_create_default_edges(HopMapManager *mgr);
 void hop_map_manager_export_topology(HopMapManager *mgr, NodeData *out_nodes, size_t *out_node_count, EdgeData *out_edges, size_t *out_edge_count);

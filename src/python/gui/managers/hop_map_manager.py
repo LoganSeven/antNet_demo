@@ -45,13 +45,36 @@ class HopMapManager:
         self.hop_nodes_data = []
         self.edges_data = []
 
-        # Track the highest node_id used so far; updated in initialize_map().
         self._last_node_id = 1
+
+        # Default range for random latencies
+        self._default_min_delay = 10
+        self._default_max_delay = 50
+
+    def set_delay_range(self, min_delay: int, max_delay: int):
+        """
+        Adjusts the random latency range for newly created or re-initialized nodes.
+        """
+        if min_delay < 0:
+            min_delay = 0
+        if max_delay < min_delay:
+            max_delay = min_delay
+
+        self._default_min_delay = min_delay
+        self._default_max_delay = max_delay
+
+    def _get_random_delay(self) -> int:
+        """
+        Returns a random delay within the configured range.
+        """
+        if self._default_max_delay < self._default_min_delay:
+            return self._default_min_delay
+        return random.randint(self._default_min_delay, self._default_max_delay)
 
     def initialize_map(self, total_nodes: int):
         """
         Creates the default set of nodes (start, end, and hop nodes), with a grid arrangement.
-        Latency is random (10..50). If total_nodes is unchanged, skip a full re-init.
+        Latency is random within the configured range. If total_nodes is unchanged, skip re-init.
         """
         current_total = 0
         if self.start_node_data:
@@ -61,7 +84,6 @@ class HopMapManager:
         current_total += len(self.hop_nodes_data)
 
         if current_total == total_nodes:
-            # Skip re-init if node count is unchanged
             return
 
         if total_nodes < 2:
@@ -72,7 +94,6 @@ class HopMapManager:
         self.hop_nodes_data.clear()
         self.edges_data.clear()
 
-        # Basic default geometry
         width = 1000.0
         height = 600.0
 
@@ -88,7 +109,7 @@ class HopMapManager:
             "radius": radius,
             "color": CLIENT_NODE_COLOR,
             "label": "Client",
-            "delay_ms": random.randint(10, 50)
+            "delay_ms": self._get_random_delay()
         }
 
         # End node
@@ -100,10 +121,9 @@ class HopMapManager:
             "radius": radius,
             "color": SERVER_NODE_COLOR,
             "label": "Server",
-            "delay_ms": random.randint(10, 50)
+            "delay_ms": self._get_random_delay()
         }
 
-        # Hop nodes
         hop_count = total_nodes - 2
         if hop_count > 0:
             grid_left = self.start_node_data["x"] + 100.0
@@ -116,7 +136,7 @@ class HopMapManager:
             col_count = int(math.ceil(hop_count / row_count))
 
             w = max(1.0, grid_right - grid_left)
-            h = max(1.0, 600.0 - 2.0 * margin)
+            h = max(1.0, height - 2.0 * margin)
 
             cell_width = w / col_count
             cell_height = h / row_count
@@ -127,6 +147,7 @@ class HopMapManager:
                 col = i % col_count
                 cx = grid_left + (col + 0.5) * cell_width
                 cy = (margin) + (row + 0.5) * cell_height
+
                 hop_data = {
                     "node_id": node_id,
                     "x": cx,
@@ -134,11 +155,10 @@ class HopMapManager:
                     "radius": radius,
                     "color": HOP_NODE_COLOR,
                     "label": f"#{node_id - 2}",
-                    "delay_ms": random.randint(10, 50)
+                    "delay_ms": self._get_random_delay()
                 }
                 self.hop_nodes_data.append(hop_data)
 
-        # Update last node id
         self._last_node_id = max(1, total_nodes - 1)
 
     def recalc_positions(self, scene_width: float, scene_height: float):
@@ -152,7 +172,6 @@ class HopMapManager:
         margin = 50.0
         radius = 15
 
-        # Place start node at left margin, end node at right margin
         if self.start_node_data:
             self.start_node_data["x"] = margin
             self.start_node_data["y"] = scene_height * 0.5
@@ -160,7 +179,6 @@ class HopMapManager:
             self.end_node_data["x"] = scene_width - margin
             self.end_node_data["y"] = scene_height * 0.5
 
-        # If no hops, done
         if not self.hop_nodes_data:
             return
 
@@ -177,13 +195,12 @@ class HopMapManager:
 
         usable_height = scene_height - 2.0 * margin
         if usable_height < 1.0:
-            usable_height = 1.0
+            return
         cell_height = usable_height / row_count
         if cell_height < (2.0 * radius):
             cell_height = 2.0 * radius
 
         total_grid_height = row_count * cell_height
-        # center vertically
         top_offset = 0.5 * (scene_height - total_grid_height)
         if top_offset < margin:
             top_offset = margin
@@ -321,7 +338,7 @@ class HopMapManager:
             new_id = self._last_node_id + 1
             cx = grid_left
             cy = margin
-            rand_delay = random.randint(10, 50)
+            rand_delay = self._get_random_delay()
             hop_data = {
                 "node_id": new_id,
                 "x": cx,

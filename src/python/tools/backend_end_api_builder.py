@@ -24,7 +24,9 @@ CDEF_PY = ROOT / "src/python/ffi/cdef_string.py"
 OUTPUT = ROOT / "src/python/ffi/backend_api.py"
 REPORT = ROOT / "build/api_autogen_report.txt"
 
-# Templates
+# ----------------------------------------------------------------------
+# TEMPLATE_BEFORE : Manual portion of backend_api.py
+# ----------------------------------------------------------------------
 TEMPLATE_BEFORE = r'''# src/python/ffi/backend_api.py
 # High-level Python wrapper for the C AntNet backend.
 # security/hardening: negative C return code ⇒ ValueError
@@ -123,6 +125,15 @@ class AntNetWrapper:
 
     # ─────────────────────── configuration read ─────────────────────
     def get_config(self) -> AppConfig:
+        """
+        Returns the current AppConfig as a dict with new fields:
+          nb_ants, set_nb_nodes, min_hops, max_hops,
+          default_min_delay, default_max_delay, death_delay,
+          under_attack_id, attack_started,
+          simulate_ddos, show_random_performance, show_brute_performance,
+          ranking_alpha, ranking_beta, ranking_gamma,
+          ant_alpha, ant_beta, ant_Q, ant_evaporation
+        """
         if self.context_id is None:
             raise ValueError("No valid context_id")
         cfg_ptr = ffi.new("AppConfig*")
@@ -130,17 +141,25 @@ class AntNetWrapper:
         if rc != 0:
             raise ValueError(f"antnet_get_config failed with code {rc}")
         return {
-            "nb_swarms":              cfg_ptr.nb_swarms,
-            "set_nb_nodes":           cfg_ptr.set_nb_nodes,
-            "min_hops":               cfg_ptr.min_hops,
-            "max_hops":               cfg_ptr.max_hops,
-            "default_delay":          cfg_ptr.default_delay,
-            "death_delay":            cfg_ptr.death_delay,
-            "under_attack_id":        cfg_ptr.under_attack_id,
-            "attack_started":         bool(cfg_ptr.attack_started),
-            "simulate_ddos":          bool(cfg_ptr.simulate_ddos),
+            "nb_ants":               cfg_ptr.nb_ants,
+            "set_nb_nodes":          cfg_ptr.set_nb_nodes,
+            "min_hops":              cfg_ptr.min_hops,
+            "max_hops":              cfg_ptr.max_hops,
+            "default_min_delay":     cfg_ptr.default_min_delay,
+            "default_max_delay":     cfg_ptr.default_max_delay,
+            "death_delay":           cfg_ptr.death_delay,
+            "under_attack_id":       cfg_ptr.under_attack_id,
+            "attack_started":        bool(cfg_ptr.attack_started),
+            "simulate_ddos":         bool(cfg_ptr.simulate_ddos),
             "show_random_performance": bool(cfg_ptr.show_random_performance),
             "show_brute_performance":  bool(cfg_ptr.show_brute_performance),
+            "ranking_alpha":         float(cfg_ptr.ranking_alpha),
+            "ranking_beta":          float(cfg_ptr.ranking_beta),
+            "ranking_gamma":         float(cfg_ptr.ranking_gamma),
+            "ant_alpha":             float(cfg_ptr.ant_alpha),
+            "ant_beta":              float(cfg_ptr.ant_beta),
+            "ant_Q":                 float(cfg_ptr.ant_Q),
+            "ant_evaporation":       float(cfg_ptr.ant_evaporation),
         }
 
     # ────────────────────────── iteration ───────────────────────────
@@ -296,6 +315,9 @@ class AntNetWrapper:
             pass
 '''
 
+# ----------------------------------------------------------------------
+# TEMPLATE_AFTER : code appended to the auto-generated stubs
+# ----------------------------------------------------------------------
 TEMPLATE_AFTER = r'''
 # GPU async renderer helpers
 _renderer_initialized = False
@@ -346,7 +368,7 @@ def render_heatmap_rgba(
 '''
 
 ###############################################################################
-# Enhanced function signature parsing
+# The remainder: auto-generation logic
 ###############################################################################
 FUNC_SIG_RE = re.compile(
     r"""
@@ -361,7 +383,6 @@ FUNC_SIG_RE = re.compile(
     re.MULTILINE | re.VERBOSE
 )
 
-# Optional: map function names to .c files for docstring references
 FUNCTION_FILE_MAP = {
     "antnet_initialize":             "backend_init.c",
     "antnet_shutdown":               "backend_init.c",
@@ -369,29 +390,18 @@ FUNCTION_FILE_MAP = {
     "antnet_get_best_path":          "backend_solvers.c",
     "antnet_run_all_solvers":        "backend_solvers.c",
     "antnet_get_pheromone_matrix":   "backend_params.c",
-    "antnet_get_aco_params":         "backend_params.c",
-    "antnet_set_aco_params":         "backend_params.c",
-    # ... etc
+    "antnet_update_topology":        "backend_topology.c",
+    "antnet_init_from_config":       "backend_params.c",
+    "antnet_get_config":             "backend_params.c",
+    # ... add more if needed
 }
 
 def load_cdefs_with_signatures() -> list[dict]:
-    """
-    Loads cdef_string.py, extracts function signatures for antnet_*.
-    Returns a list of dicts sorted by fn_name:
-    [
-      {
-        'return_type': 'int',
-        'fn_name': 'antnet_run_iteration',
-        'params': 'int context_id, float alpha'
-      },
-      ...
-    ]
-    """
     spec = importlib.util.spec_from_file_location("_cdef", CDEF_PY)
-    mod = importlib.util.module_from_spec(spec)  # type: ignore
-    spec.loader.exec_module(mod)                 # type: ignore
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)  # type: ignore
 
-    text = mod.CDEF_SOURCE  # type: ignore
+    text = mod.CDEF_SOURCE  # from cdef_string.py
     result = []
     for match in FUNC_SIG_RE.finditer(text):
         result.append({
@@ -401,55 +411,34 @@ def load_cdefs_with_signatures() -> list[dict]:
         })
     return sorted(result, key=lambda x: x["fn_name"])
 
-
 def parse_params(param_string: str) -> list[tuple[str, str]]:
-    """
-    Splits the comma-separated param string into (type, varname).
-    Example: "float *out_alpha, int *out_num_ants"
-       => [("float*", "out_alpha"), ("int*", "out_num_ants")]
-    We remove "context_id" from the final signature later.
-    """
     if not param_string.strip():
         return []
     params = []
     for raw in param_string.split(","):
         raw = raw.strip()
-        # e.g. "float *out_alpha"
-        # 1) split by whitespace from the right to get the var name
         pieces = raw.rsplit(None, 1)
         if len(pieces) < 2:
             continue
         ptype, pname = pieces
         ptype = ptype.strip()
 
-        # If the name has leading '*' or other pointer symbols, merge them into ptype
-        # Example: "out_alpha" => "out_alpha", but "*out_alpha" => "out_alpha" with ptype containing one more '*'
+        # Move leading '*' from pname to ptype
         while pname.startswith("*"):
             ptype += "*"
             pname = pname[1:]
 
-        # Also handle if user wrote "float** out_alpha"
-        # The above approach will keep the initial star in ptype, so "float*" becomes "float**", etc.
-
-        # unify any double space
         ptype = ptype.replace("  ", " ")
-
         params.append((ptype, pname))
     return params
 
-
 def detect_existing_wrappers() -> set[str]:
-    """
-    Parses the existing backend_api.py to find which antnet_* functions
-    are already wrapped in manual code or previously generated stubs.
-    """
     if not OUTPUT.exists():
         return set()
     source_text = OUTPUT.read_text(encoding="utf-8")
     try:
         tree = ast.parse(source_text)
     except SyntaxError:
-        # If there's a partial or invalid file, we'll treat it as no wrappers found
         return set()
     return {
         node.func.attr
@@ -459,33 +448,18 @@ def detect_existing_wrappers() -> set[str]:
         and node.func.attr.startswith("antnet_")
     }
 
-
 def generate_wrapper(fn_dict: dict) -> str:
-    """
-    Generates a Python wrapper for a single antnet_* function.
-    Excludes context_id from the param list. Adds docstring with big red marker.
-    """
     fn_name = fn_dict["fn_name"]
     raw_params = parse_params(fn_dict["params"])
-
-    # Exclude "context_id"
     actual_params = [(t, n) for (t, n) in raw_params if n != "context_id"]
 
-    # Build a Python param list (just names, ignoring the C type)
-    py_params_str = ", ".join(n for (t, n) in actual_params)
-
-    # Potential c file
     c_file = FUNCTION_FILE_MAP.get(fn_name, "Unknown")
-    big_red = "🟥"
+    doc = (f"AUTO-GENERATED thin wrapper for lib.{fn_name}.\n"
+           f"[File: {c_file}] MUST BE IMPLEMENTED 🟥\n"
+           f"Parameter signature (excluding context_id): {actual_params}")
 
-    doc = (
-        f"AUTO-GENERATED thin wrapper for lib.{fn_name}.\n"
-        f"[File: {c_file}] MUST BE IMPLEMENTED {big_red}\n"
-        f"Parameter signature (excluding context_id): {actual_params}"
-    )
-
-    # build final call
-    call_params = ", ".join(["self.context_id"] + [n for (t, n) in actual_params])
+    py_params_str = ", ".join(n for (t, n) in actual_params)
+    call_params   = ", ".join(["self.context_id"] + [n for (t, n) in actual_params])
 
     code = f"""def {fn_name}(self, {py_params_str}):
     \"\"\"{doc}\"\"\"
@@ -499,15 +473,9 @@ def generate_wrapper(fn_dict: dict) -> str:
     raise RuntimeError("{fn_name} returned unexpected {{rc}}")"""
     return indent(code, "    ")
 
-
 def main() -> None:
-    # Load all function signatures
     all_func_dicts = load_cdefs_with_signatures()
-
-    # Which ones are already implemented?
     implemented = detect_existing_wrappers()
-
-    # Build list of missing
     missing_dicts = [d for d in all_func_dicts if d["fn_name"] not in implemented]
 
     if missing_dicts:

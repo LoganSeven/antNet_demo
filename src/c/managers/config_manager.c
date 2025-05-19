@@ -23,17 +23,34 @@ static pthread_mutex_t g_config_mutex = PTHREAD_MUTEX_INITIALIZER;
  */
 void config_set_defaults(AppConfig* cfg)
 {
-    cfg->nb_swarms              = 3;
-    cfg->set_nb_nodes           = 16;
-    cfg->min_hops               = 3;
-    cfg->max_hops               = 6;
-    cfg->default_delay          = 30;
-    cfg->death_delay            = 200;
-    cfg->under_attack_id        = 5;
-    cfg->attack_started         = true;
-    cfg->simulate_ddos          = true;
-    cfg->show_random_performance= true;
-    cfg->show_brute_performance = false;
+    /* [simulation] defaults */
+    cfg->nb_ants       = 3;
+    cfg->set_nb_nodes  = 16;
+    cfg->min_hops      = 3;
+    cfg->max_hops      = 6;
+
+    /* [node] defaults */
+    cfg->default_min_delay = 3;
+    cfg->default_max_delay = 250;
+    cfg->death_delay       = 200;
+    cfg->under_attack_id   = 5;
+    cfg->attack_started    = true;
+
+    /* [features] defaults */
+    cfg->simulate_ddos           = true;
+    cfg->show_random_performance = true;
+    cfg->show_brute_performance  = false;
+
+    /* [ranking] defaults */
+    cfg->ranking_alpha = 0.4;
+    cfg->ranking_beta  = 0.4;
+    cfg->ranking_gamma = 0.2;
+
+    /* [ants] defaults */
+    cfg->ant_alpha       = 1.0f;
+    cfg->ant_beta        = 2.0f;
+    cfg->ant_Q           = 500.0f;
+    cfg->ant_evaporation = 0.1f;
 }
 
 /*
@@ -67,7 +84,7 @@ static bool parse_bool_value(const char* str)
 /*
  * config_ini_handler: callback used by ini_parse to fill the AppConfig struct.
  * user  = pointer to AppConfig
- * name  = name within a section (e.g. "nb_swarms", "simulate_ddos", etc.)
+ * name  = name within a section (e.g. "nb_ants", "simulate_ddos", etc.)
  * value = string found in .ini
  * Returns 1 on success, 0 if a parse error requires stopping.
  */
@@ -80,25 +97,39 @@ static int config_ini_handler(void* user, const char* section,
 
     AppConfig* cfg = (AppConfig*)user;
 
-    /* section: "simulation" */
+    /* [simulation] */
     if (strcmp(section, "simulation") == 0) {
-        if      (strcmp(name, "nb_swarms")   == 0) { cfg->nb_swarms    = atoi(value); }
-        else if (strcmp(name, "set_nb_nodes")== 0) { cfg->set_nb_nodes = atoi(value); }
-        else if (strcmp(name, "min_hops")    == 0) { cfg->min_hops     = atoi(value); }
-        else if (strcmp(name, "max_hops")    == 0) { cfg->max_hops     = atoi(value); }
+        if      (strcmp(name, "nb_ants")      == 0) { cfg->nb_ants      = atoi(value); }
+        else if (strcmp(name, "set_nb_nodes") == 0) { cfg->set_nb_nodes = atoi(value); }
+        else if (strcmp(name, "min_hops")     == 0) { cfg->min_hops     = atoi(value); }
+        else if (strcmp(name, "max_hops")     == 0) { cfg->max_hops     = atoi(value); }
     }
-    /* section: "node" */
+    /* [node] */
     else if (strcmp(section, "node") == 0) {
-        if      (strcmp(name, "default_delay")   == 0) { cfg->default_delay   = atoi(value); }
-        else if (strcmp(name, "death_delay")     == 0) { cfg->death_delay     = atoi(value); }
-        else if (strcmp(name, "under_attack_id") == 0) { cfg->under_attack_id = atoi(value); }
-        else if (strcmp(name, "attack_started")  == 0) { cfg->attack_started  = parse_bool_value(value); }
+        if      (strcmp(name, "default_min_delay") == 0) { cfg->default_min_delay = atoi(value); }
+        else if (strcmp(name, "default_max_delay") == 0) { cfg->default_max_delay = atoi(value); }
+        else if (strcmp(name, "death_delay")       == 0) { cfg->death_delay       = atoi(value); }
+        else if (strcmp(name, "under_attack_id")   == 0) { cfg->under_attack_id   = atoi(value); }
+        else if (strcmp(name, "attack_started")    == 0) { cfg->attack_started    = parse_bool_value(value); }
     }
-    /* section: "features" */
+    /* [features] */
     else if (strcmp(section, "features") == 0) {
         if      (strcmp(name, "simulate_ddos")          == 0) { cfg->simulate_ddos          = parse_bool_value(value); }
         else if (strcmp(name, "show_random_performance")== 0) { cfg->show_random_performance= parse_bool_value(value); }
         else if (strcmp(name, "show_brute_performance") == 0) { cfg->show_brute_performance = parse_bool_value(value); }
+    }
+    /* [ranking] */
+    else if (strcmp(section, "ranking") == 0) {
+        if      (strcmp(name, "ranking_alpha") == 0) { cfg->ranking_alpha = atof(value); }
+        else if (strcmp(name, "ranking_beta")  == 0) { cfg->ranking_beta  = atof(value); }
+        else if (strcmp(name, "ranking_gamma") == 0) { cfg->ranking_gamma = atof(value); }
+    }
+    /* [ants] */
+    else if (strcmp(section, "ants") == 0) {
+        if      (strcmp(name, "ant_alpha")    == 0) { cfg->ant_alpha       = (float)atof(value); }
+        else if (strcmp(name, "ant_beta")     == 0) { cfg->ant_beta        = (float)atof(value); }
+        else if (strcmp(name, "Q")            == 0) { cfg->ant_Q           = (float)atof(value); }
+        else if (strcmp(name, "evaporation")  == 0) { cfg->ant_evaporation = (float)atof(value); }
     }
 
     return 1; /* continue parsing */
@@ -106,7 +137,7 @@ static int config_ini_handler(void* user, const char* section,
 
 /*
  * config_load: loads the .ini file at filepath into *cfg.
- * Returns true on success, false on error (e.g. file open or parse failure).
+ * Returns true on success, false on error (file open or parse failure).
  * This function does not discard existing cfg fields if missing from the file.
  * Default values can be set beforehand with config_set_defaults if needed.
  */
@@ -120,14 +151,8 @@ bool config_load(AppConfig* cfg, const char* filepath)
     pthread_mutex_lock(&g_config_mutex);
 #endif
 
-    /* parse ini */
     int parse_result = ini_parse(filepath, config_ini_handler, cfg);
     if (parse_result != 0) {
-        /*
-         * parse_result > 0 => line of first error
-         * parse_result = -1 => file open error
-         * parse_result = -2 => memory error
-         */
 #ifndef _WIN32
         pthread_mutex_unlock(&g_config_mutex);
 #endif
@@ -163,29 +188,39 @@ bool config_save(const AppConfig* cfg, const char* filepath)
         return false;
     }
 
-    /*
-     * Write out the config in standard .ini format:
-     *   [simulation]
-     *   ...
-     *   [node]
-     *   ...
-     *   [features]
-     *   ...
-     */
+    /* [simulation] */
     fprintf(fp, "[simulation]\n");
-    fprintf(fp, "nb_swarms = %d\n",          cfg->nb_swarms);
-    fprintf(fp, "set_nb_nodes = %d\n",       cfg->set_nb_nodes);
-    fprintf(fp, "min_hops = %d\n",           cfg->min_hops);
-    fprintf(fp, "max_hops = %d\n",           cfg->max_hops);
+    fprintf(fp, "nb_ants = %d\n",         cfg->nb_ants);
+    fprintf(fp, "set_nb_nodes = %d\n",    cfg->set_nb_nodes);
+    fprintf(fp, "min_hops = %d\n",        cfg->min_hops);
+    fprintf(fp, "max_hops = %d\n",        cfg->max_hops);
+
+    /* [node] */
     fprintf(fp, "\n[node]\n");
-    fprintf(fp, "default_delay = %d\n",      cfg->default_delay);
-    fprintf(fp, "death_delay = %d\n",        cfg->death_delay);
-    fprintf(fp, "under_attack_id = %d\n",    cfg->under_attack_id);
-    fprintf(fp, "attack_started = %s\n",     cfg->attack_started ? "true" : "false");
+    fprintf(fp, "default_min_delay = %d\n", cfg->default_min_delay);
+    fprintf(fp, "default_max_delay = %d\n", cfg->default_max_delay);
+    fprintf(fp, "death_delay = %d\n",       cfg->death_delay);
+    fprintf(fp, "under_attack_id = %d\n",   cfg->under_attack_id);
+    fprintf(fp, "attack_started = %s\n",    cfg->attack_started ? "true" : "false");
+
+    /* [features] */
     fprintf(fp, "\n[features]\n");
     fprintf(fp, "simulate_ddos = %s\n",          cfg->simulate_ddos ? "true" : "false");
     fprintf(fp, "show_random_performance = %s\n",cfg->show_random_performance ? "true" : "false");
-    fprintf(fp, "show_brute_performance = %s\n", cfg->show_brute_performance ? "true" : "false");
+    fprintf(fp, "show_brute_performance = %s\n", cfg->show_brute_performance  ? "true" : "false");
+
+    /* [ranking] */
+    fprintf(fp, "\n[ranking]\n");
+    fprintf(fp, "ranking_alpha = %f\n", cfg->ranking_alpha);
+    fprintf(fp, "ranking_beta = %f\n",  cfg->ranking_beta);
+    fprintf(fp, "ranking_gamma = %f\n", cfg->ranking_gamma);
+
+    /* [ants] */
+    fprintf(fp, "\n[ants]\n");
+    fprintf(fp, "ant_alpha = %f\n",    cfg->ant_alpha);
+    fprintf(fp, "ant_beta = %f\n",     cfg->ant_beta);
+    fprintf(fp, "Q = %f\n",            cfg->ant_Q);
+    fprintf(fp, "evaporation = %f\n",  cfg->ant_evaporation);
 
     fclose(fp);
 

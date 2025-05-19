@@ -42,6 +42,10 @@ HopMapManager* hop_map_manager_create() {
     mgr->edges      = NULL;
     mgr->edge_count = 0;
 
+    /* default random delay range (old 10..50 now changed to a default safe range) */
+    mgr->default_min_delay = 10;
+    mgr->default_max_delay = 50;
+
     srand((unsigned int)time(NULL));
 
     return mgr;
@@ -60,6 +64,38 @@ void hop_map_manager_destroy(HopMapManager *mgr) {
     if (mgr->edges)      free(mgr->edges);
 
     free(mgr);
+}
+
+/*
+ * Allows setting the random delay range for node latencies in a thread-safe manner.
+ */
+void hop_map_manager_set_delay_range(HopMapManager *mgr, int min_delay, int max_delay) {
+    if (!mgr) return;
+#ifndef _WIN32
+    pthread_mutex_lock(&mgr->lock);
+#endif
+
+    mgr->default_min_delay = (min_delay < 0) ? 0 : min_delay;
+    mgr->default_max_delay = (max_delay < 0) ? 0 : max_delay;
+    if (mgr->default_max_delay < mgr->default_min_delay) {
+        mgr->default_max_delay = mgr->default_min_delay;
+    }
+
+#ifndef _WIN32
+    pthread_mutex_unlock(&mgr->lock);
+#endif
+}
+
+/*
+ * Returns a random delay within the configured range.
+ */
+static int hop_map_manager_get_random_delay(const HopMapManager *mgr) {
+    int range = mgr->default_max_delay - mgr->default_min_delay + 1;
+    if (range < 1) {
+        return mgr->default_min_delay;
+    }
+    int rnd = rand() % range;
+    return mgr->default_min_delay + rnd;
 }
 
 /*
@@ -122,14 +158,14 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
     mgr->start_node->x        = margin;
     mgr->start_node->y        = mid_y;
     mgr->start_node->radius   = radius;
-    mgr->start_node->delay_ms = (rand() % 41) + 10; /* random 10..50 */
+    mgr->start_node->delay_ms = hop_map_manager_get_random_delay(mgr);
 
     /* End node */
     mgr->end_node->node_id  = 1;
     mgr->end_node->x        = width - margin;
     mgr->end_node->y        = mid_y;
     mgr->end_node->radius   = radius;
-    mgr->end_node->delay_ms = (rand() % 41) + 10; /* random 10..50 */
+    mgr->end_node->delay_ms = hop_map_manager_get_random_delay(mgr);
 
     mgr->hop_count = (size_t)(total_nodes - 2);
     if (mgr->hop_count > 0) {
@@ -168,7 +204,7 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
         for (int i = 0; i < total_hops; i++) {
             mgr->hop_nodes[i].node_id  = i + 2;
             mgr->hop_nodes[i].radius   = radius;
-            mgr->hop_nodes[i].delay_ms = (rand() % 41) + 10; /* random 10..50 */
+            mgr->hop_nodes[i].delay_ms = hop_map_manager_get_random_delay(mgr);
 
             int row = i / col_count;
             int col = i % col_count;
@@ -204,7 +240,6 @@ void hop_map_manager_recalc_positions(HopMapManager *mgr,
 #endif
 
     if (scene_width <= 10.0f || scene_height <= 10.0f) {
-        /* Too small for sensible layout, do nothing */
 #ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
 #endif
@@ -216,18 +251,15 @@ void hop_map_manager_recalc_positions(HopMapManager *mgr,
     int radius = 15;
 
     if (mgr->start_node) {
-        /* place start node at left margin, vertically center */
         mgr->start_node->x = margin;
         mgr->start_node->y = scene_height * 0.5f;
     }
 
     if (mgr->end_node) {
-        /* place end node at right margin, vertically center */
         mgr->end_node->x = scene_width - margin;
         mgr->end_node->y = scene_height * 0.5f;
     }
 
-    /* If no hops, done */
     if (!mgr->hop_nodes || mgr->hop_count == 0) {
 #ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
@@ -235,9 +267,6 @@ void hop_map_manager_recalc_positions(HopMapManager *mgr,
         return;
     }
 
-    /* We place the hops in a grid between start.x+100 and end.x-100 horizontally,
-     * and we center them vertically as a block in the scene.
-     */
     float grid_left  = (mgr->start_node) ? (mgr->start_node->x + 100.0f) : 100.0f;
     float grid_right = (mgr->end_node)   ? (mgr->end_node->x   - 100.0f) : (scene_width - 100.0f);
     if (grid_right < grid_left) {
@@ -250,27 +279,30 @@ void hop_map_manager_recalc_positions(HopMapManager *mgr,
     int row_count = (int)ceilf(rowsf);
     int col_count = (int)ceilf((float)total_hops / (float)row_count);
 
-    /* We define a top margin, but we'll center the total grid vertically. */
     float usable_height = scene_height - 2.0f * margin;
-    if (usable_height < 1.0f) usable_height = 1.0f;
+    if (usable_height < 1.0f) {
+#ifndef _WIN32
+        pthread_mutex_unlock(&mgr->lock);
+#endif
+        return;
+    }
 
     float cell_height = usable_height / (float)row_count;
     if (cell_height < (2.0f * radius)) {
-        cell_height = 2.0f * radius; /* minimal spacing if scene is short */
+        cell_height = 2.0f * radius;
     }
 
     float grid_total_height = row_count * cell_height;
-    /* center that block vertically */
     float top_offset = 0.5f * (scene_height - grid_total_height);
     if (top_offset < margin) {
-        top_offset = margin; /* do not push above the top margin if scene is small */
+        top_offset = margin;
     }
 
     float w = (grid_right > grid_left) ? (grid_right - grid_left) : 1.0f;
     if (col_count < 1) col_count = 1;
     float cell_width = w / (float)col_count;
     if (cell_width < (2.0f * radius)) {
-        cell_width = 2.0f * radius; /* minimal spacing horizontally */
+        cell_width = 2.0f * radius;
     }
 
     for (int i = 0; i < total_hops; i++) {
@@ -290,10 +322,8 @@ void hop_map_manager_recalc_positions(HopMapManager *mgr,
 }
 
 /*
- * The rest is unchanged from your original code, shown for completeness.
- * This includes create_default_edges(...) and export_topology(...).
+ * Creates default edges for up to 3 nearest hops, modifies mgr->edges
  */
-
 void hop_map_manager_create_default_edges(HopMapManager *mgr) {
     if (!mgr) return;
 
