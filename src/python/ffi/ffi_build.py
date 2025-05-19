@@ -25,6 +25,9 @@ ffi.set_source(
 #include "core/backend_topology.h"
 #include "core/score_evaluation.h"
 #include "managers/config_manager.h"
+#include "managers/cpu_acoV1_algo_manager.h"
+#include "managers/cpu_brute_force_algo_manager.h"
+#include "managers/cpu_random_algo_manager.h"
 #include "managers/hop_map_manager.h"
 #include "rendering/heatmap_renderer.h"
 #include "rendering/heatmap_renderer_async.h"
@@ -35,9 +38,13 @@ ffi.set_source(
 #include "types/antnet_network_types.h"
 #include "types/antnet_path_types.h"
 #include "types/antnet_ranking_types.h"
+#include "types/antnet_sasa_types.h"
 """,
     sources=[
+        os.path.join(src_c_dir, "managers/cpu_acoV1_algo_manager.c"),
+        os.path.join(src_c_dir, "managers/cpu_random_algo_manager.c"),
         os.path.join(src_c_dir, "managers/config_manager.c"),
+        os.path.join(src_c_dir, "managers/cpu_brute_force_algo_manager.c"),
         os.path.join(src_c_dir, "managers/hop_map_manager.c"),
         os.path.join(src_c_dir, "core/backend.c"),
         os.path.join(src_c_dir, "core/backend_topology.c"),

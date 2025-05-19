@@ -42,6 +42,9 @@ set(SOURCE_FILES
     src/c/core/backend_topology.c
     src/c/core/score_evaluation.c
     src/c/managers/config_manager.c
+    src/c/managers/cpu_acoV1_algo_manager.c
+    src/c/managers/cpu_brute_force_algo_manager.c
+    src/c/managers/cpu_random_algo_manager.c
     src/c/managers/hop_map_manager.c
     src/c/rendering/heatmap_renderer.c
     src/c/rendering/heatmap_renderer_async.c

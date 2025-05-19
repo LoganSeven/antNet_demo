@@ -269,7 +269,49 @@ class AntNetWrapper:
             pass
 
 
-    # (all antnet_* functions accounted for in manual code)
+    def antnet_get_aco_params(self, *args):
+        """AUTO-GENERATED thin wrapper for lib.antnet_get_aco_params."""
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for antnet_get_aco_params")
+        rc = lib.antnet_get_aco_params(self.context_id, *args)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("antnet_get_aco_params failed with code {rc}")
+        raise RuntimeError("antnet_get_aco_params returned unexpected {rc}")
+
+    def antnet_get_sasa_params(self, *args):
+        """AUTO-GENERATED thin wrapper for lib.antnet_get_sasa_params."""
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for antnet_get_sasa_params")
+        rc = lib.antnet_get_sasa_params(self.context_id, *args)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("antnet_get_sasa_params failed with code {rc}")
+        raise RuntimeError("antnet_get_sasa_params returned unexpected {rc}")
+
+    def antnet_set_aco_params(self, *args):
+        """AUTO-GENERATED thin wrapper for lib.antnet_set_aco_params."""
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for antnet_set_aco_params")
+        rc = lib.antnet_set_aco_params(self.context_id, *args)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("antnet_set_aco_params failed with code {rc}")
+        raise RuntimeError("antnet_set_aco_params returned unexpected {rc}")
+
+    def antnet_set_sasa_params(self, *args):
+        """AUTO-GENERATED thin wrapper for lib.antnet_set_sasa_params."""
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for antnet_set_sasa_params")
+        rc = lib.antnet_set_sasa_params(self.context_id, *args)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("antnet_set_sasa_params failed with code {rc}")
+        raise RuntimeError("antnet_set_sasa_params returned unexpected {rc}")
 
 
 # ───────────────────── GPU async renderer helpers ─────────────────────

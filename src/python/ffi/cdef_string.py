@@ -93,6 +93,11 @@ typedef struct {
     int latency_ms;
 } RankingEntry;
 typedef struct {
+    double alpha;
+    double beta;
+    double gamma;
+} SasaCoeffs;
+typedef struct {
     int node_count;
     int min_hops;
     int max_hops;
@@ -117,6 +122,7 @@ typedef struct {
     SasaState aco_sasa;
     SasaState random_sasa;
     SasaState brute_sasa;
+    SasaCoeffs sasa_coeffs;
 } AntNetContext;
 typedef struct {
     pthread_mutex_t lock;
@@ -152,6 +158,10 @@ int antnet_render_heatmap_rgba(const float *pts_xy, const float *strength, int n
 int antnet_renderer_async_init(int initial_width, int initial_height);
 int antnet_renderer_async_shutdown(void);
 int antnet_get_algo_ranking(int context_id, RankingEntry *out, int max_count);
+int antnet_set_sasa_params(int context_id, double alpha, double beta, double gamma);
+int antnet_get_sasa_params(int context_id, double *out_alpha, double *out_beta, double *out_gamma);
+int antnet_set_aco_params(int context_id, float alpha, float beta, float Q, float evaporation, int num_ants);
+int antnet_get_aco_params(int context_id, float *out_alpha, float *out_beta, float *out_Q, float *out_evaporation, int *out_num_ants);
 int antnet_update_topology(int context_id, const NodeData *nodes, int num_nodes, const EdgeData *edges, int num_edges);
 int random_search_path(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);
 int brute_force_search_step(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);

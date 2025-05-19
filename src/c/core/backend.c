@@ -3,6 +3,7 @@
  * The relevant changes are in antnet_run_all_solvers to incorporate ACO logic
  * plus the newly added antnet_get_config for reading the AppConfig.
  * The rest of the file remains the same, except for new lines with aco_v1 calls,
+ * the new SASA param usage, new param setters/getters,
  * and the final function antnet_render_heatmap_rgba which now calls the async approach.
  * Two new functions at the end manage the async renderer lifecycle:
  *    antnet_renderer_async_init
@@ -41,6 +42,10 @@ static int g_context_in_use[MAX_CONTEXTS] = {0};
 static pthread_mutex_t g_contexts_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
+/*
+ * get_context_by_id
+ * Retrieves the pointer to the context if in range and in use, else returns NULL.
+ */
 AntNetContext* get_context_by_id(int context_id)
 {
     if (context_id < 0 || context_id >= MAX_CONTEXTS) {
@@ -57,6 +62,11 @@ AntNetContext* get_context_by_id(int context_id)
     return in_use ? &g_contexts[context_id] : NULL;
 }
 
+/*
+ * antnet_initialize
+ * Creates a new context if there is a free slot, initializes default fields,
+ * sets up random/bf/aco states, and returns the context_id on success.
+ */
 int antnet_initialize(int node_count, int min_hops, int max_hops)
 {
 #ifndef _WIN32
@@ -92,7 +102,6 @@ int antnet_initialize(int node_count, int min_hops, int max_hops)
             memset(ctx->brute_best_nodes, 0, sizeof(ctx->brute_best_nodes));
             memset(&ctx->brute_state, 0, sizeof(ctx->brute_state));
 
-            /* ACO initialization fields */
             ctx->aco_best_length  = 0;
             ctx->aco_best_latency = 0;
             memset(ctx->aco_best_nodes, 0, sizeof(ctx->aco_best_nodes));
@@ -102,10 +111,15 @@ int antnet_initialize(int node_count, int min_hops, int max_hops)
             pthread_mutex_init(&ctx->lock, NULL);
 #endif
 
-            /* SASA addition: initialize SASA states for ACO, Random, Brute */
+            /* SASA addition: initialize SASA states for ACO, Random, Brute to default */
             init_sasa_state(&ctx->aco_sasa);
             init_sasa_state(&ctx->random_sasa);
             init_sasa_state(&ctx->brute_sasa);
+
+            /* NEW: default SASA coefficients, previously hard-coded in run_all_solvers */
+            ctx->sasa_coeffs.alpha = 0.4;
+            ctx->sasa_coeffs.beta  = 0.4;
+            ctx->sasa_coeffs.gamma = 0.2;
 
             return i;
         }
@@ -116,6 +130,10 @@ int antnet_initialize(int node_count, int min_hops, int max_hops)
     return ERR_NO_FREE_SLOT;
 }
 
+/*
+ * antnet_run_iteration
+ * Increments the iteration counter in a thread-safe manner.
+ */
 int antnet_run_iteration(int context_id)
 {
     AntNetContext* ctx = get_context_by_id(context_id);
@@ -130,6 +148,12 @@ int antnet_run_iteration(int context_id)
     return ERR_SUCCESS;
 }
 
+/*
+ * antnet_get_best_path
+ * Retrieves the current best path from the random solver, or returns a mock path
+ * if none found. Thread-safe. (ACO & BF best path can be retrieved separately
+ * if needed, or replaced with a param in future.)
+ */
 int antnet_get_best_path(
     int context_id,
     int* out_nodes,
@@ -168,7 +192,7 @@ int antnet_get_best_path(
         }
         memcpy(out_nodes, mock_nodes, length * sizeof(mock_nodes[0]));
         *out_path_len      = length;
-        *out_total_latency = 42 + ctx->iteration;
+        *out_total_latency = 42 + ctx->iteration; /* mock value */
     }
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
@@ -176,6 +200,11 @@ int antnet_get_best_path(
     return ERR_SUCCESS;
 }
 
+/*
+ * antnet_shutdown
+ * Frees all allocated memory associated with the context, destroys locks,
+ * and marks the slot as unused. Thread-safe with final destruction after unlock.
+ */
 int antnet_shutdown(int context_id)
 {
     AntNetContext* ctx = get_context_by_id(context_id);
@@ -201,7 +230,9 @@ int antnet_shutdown(int context_id)
         free(ctx->aco_v1.pheromones);
         ctx->aco_v1.pheromones = NULL;
     }
+
     printf("[antnet_shutdown] context %d final iteration: %d\n", context_id, ctx->iteration);
+
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
     pthread_mutex_destroy(&ctx->lock);
@@ -220,10 +251,15 @@ int antnet_shutdown(int context_id)
 /*
  * NEW HELPER NOTE:
  * Each time a solver improves, the code calls update_on_improvement(...) for that solver.
- * Then it calls recalc_sasa_score(...) for the other solvers so that iteration-based terms
- * (like f = m / iteration) stay up to date, and the final ranking is updated accordingly.
+ * Then it calls recalc_sasa_score(...) for the other solvers so that iteration-based factors
+ * (like f = m / iteration) remain up to date, and the final ranking is updated accordingly.
  */
 
+/*
+ * antnet_run_all_solvers
+ * Runs ACO, Random, and Brute-Force in sequence, each potentially improving its best path,
+ * updates SASA states accordingly, and returns the best path found by each in out_* arrays.
+ */
 int antnet_run_all_solvers(
     int  context_id,
     int* out_nodes_aco,
@@ -242,7 +278,8 @@ int antnet_run_all_solvers(
 {
     if (!out_nodes_aco || !out_len_aco || !out_latency_aco ||
         !out_nodes_random || !out_len_random || !out_latency_random ||
-        !out_nodes_brute || !out_len_brute || !out_latency_brute) {
+        !out_nodes_brute || !out_len_brute || !out_latency_brute)
+    {
         return ERR_INVALID_ARGS;
     }
 
@@ -254,134 +291,143 @@ int antnet_run_all_solvers(
 #endif
     /*
      * Increment iteration for each call to run_all_solvers.
-     * This ensures SASA's "iter_idx" moves forward, so that improvement intervals
-     * and frequency terms are computed properly.
+     * This ensures SASA "iter_idx" moves forward properly.
      */
     ctx->iteration++;
 
     *out_len_aco     = 0;
     *out_latency_aco = 0;
 
-    /* 
-     * 1) ACO
-     */
-    int old_aco_latency = (ctx->aco_best_length > 0) ? ctx->aco_best_latency : INT_MAX;
-    int rc = aco_v1_run_iteration(ctx);
-    if (rc != ERR_SUCCESS && rc != ERR_NO_TOPOLOGY) {
+    /* 1) ACO */
+    {
+        int old_aco_latency = (ctx->aco_best_length > 0) ? ctx->aco_best_latency : INT_MAX;
+        int rc = aco_v1_run_iteration(ctx);
+        if (rc != ERR_SUCCESS && rc != ERR_NO_TOPOLOGY) {
 #ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
+            pthread_mutex_unlock(&ctx->lock);
 #endif
-        return rc;
-    }
-    rc = aco_v1_search_path(ctx, 0, 1,
-                            out_nodes_aco, max_size_aco,
-                            out_len_aco, out_latency_aco);
-    if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND) {
+            return rc;
+        }
+        rc = aco_v1_search_path(ctx, 0, 1,
+                                out_nodes_aco, max_size_aco,
+                                out_len_aco, out_latency_aco);
+        if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND) {
 #ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
+            pthread_mutex_unlock(&ctx->lock);
 #endif
-        return rc;
+            return rc;
+        }
+
+        /* If improved, update SASA for ACO, then recalc the other solvers' scores. */
+        if (ctx->aco_best_length > 0 && ctx->aco_best_latency < old_aco_latency) {
+            update_on_improvement(
+                ctx->iteration,
+                (double)ctx->aco_best_latency,
+                &ctx->aco_sasa,
+                ctx->sasa_coeffs.alpha,
+                ctx->sasa_coeffs.beta,
+                ctx->sasa_coeffs.gamma
+            );
+
+            recalc_sasa_score(&ctx->random_sasa, ctx->iteration,
+                              ctx->sasa_coeffs.alpha,
+                              ctx->sasa_coeffs.beta,
+                              ctx->sasa_coeffs.gamma);
+            recalc_sasa_score(&ctx->brute_sasa, ctx->iteration,
+                              ctx->sasa_coeffs.alpha,
+                              ctx->sasa_coeffs.beta,
+                              ctx->sasa_coeffs.gamma);
+
+            SasaState states[3] = {ctx->aco_sasa, ctx->random_sasa, ctx->brute_sasa};
+            int rank_order[3];
+            compute_ranking(states, 3, rank_order);
+            printf("[RANK] ACO improved => order: #%d first, #%d second, #%d third\n",
+                   rank_order[0], rank_order[1], rank_order[2]);
+        }
     }
 
-    /* SASA addition: if ACO improved its best path, update SASA state, then re-score all. */
-    if (ctx->aco_best_length > 0 && ctx->aco_best_latency < old_aco_latency) {
-        update_on_improvement(
-            ctx->iteration,
-            (double)ctx->aco_best_latency,
-            &ctx->aco_sasa,
-            0.4, /* alpha */
-            0.4, /* beta  */
-            0.2  /* gamma */
+    /* 2) RANDOM */
+    {
+        int old_random_latency = (ctx->random_best_length > 0) ? ctx->random_best_latency : INT_MAX;
+        int rc = random_search_path(
+            ctx, 0, 1,
+            out_nodes_random, max_size_random,
+            out_len_random, out_latency_random
         );
-
-        /*
-         * Recompute final SASA score for the other solvers, so the iteration-based
-         * weighting remains consistent for all. The old solver does not need it
-         * here, because update_on_improvement(...) already recalculated its own state.
-         */
-        recalc_sasa_score(&ctx->random_sasa, ctx->iteration, 0.4, 0.4, 0.2);
-        recalc_sasa_score(&ctx->brute_sasa,  ctx->iteration, 0.4, 0.4, 0.2);
-
-        /* Then compute the final ranking. */
-        SasaState states[3] = {ctx->aco_sasa, ctx->random_sasa, ctx->brute_sasa};
-        int rank_order[3];
-        compute_ranking(states, 3, rank_order);
-        printf("[RANK] ACO improved => order: #%d first, #%d second, #%d third\n",
-               rank_order[0], rank_order[1], rank_order[2]);
-    }
-
-    /*
-     * 2) RANDOM
-     */
-    int old_random_latency = (ctx->random_best_length > 0) ? ctx->random_best_latency : INT_MAX;
-    rc = random_search_path(
-        ctx, 0, 1,
-        out_nodes_random, max_size_random,
-        out_len_random, out_latency_random
-    );
-    if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND) {
+        if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND) {
 #ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
+            pthread_mutex_unlock(&ctx->lock);
 #endif
-        return rc;
+            return rc;
+        }
+
+        if (ctx->random_best_length > 0 && ctx->random_best_latency < old_random_latency) {
+            update_on_improvement(
+                ctx->iteration,
+                (double)ctx->random_best_latency,
+                &ctx->random_sasa,
+                ctx->sasa_coeffs.alpha,
+                ctx->sasa_coeffs.beta,
+                ctx->sasa_coeffs.gamma
+            );
+
+            recalc_sasa_score(&ctx->aco_sasa, ctx->iteration,
+                              ctx->sasa_coeffs.alpha,
+                              ctx->sasa_coeffs.beta,
+                              ctx->sasa_coeffs.gamma);
+            recalc_sasa_score(&ctx->brute_sasa, ctx->iteration,
+                              ctx->sasa_coeffs.alpha,
+                              ctx->sasa_coeffs.beta,
+                              ctx->sasa_coeffs.gamma);
+
+            SasaState states[3] = {ctx->aco_sasa, ctx->random_sasa, ctx->brute_sasa};
+            int rank_order[3];
+            compute_ranking(states, 3, rank_order);
+            printf("[RANK] Random improved => order: #%d first, #%d second, #%d third\n",
+                   rank_order[0], rank_order[1], rank_order[2]);
+        }
     }
 
-    /* SASA addition: if Random improved, update SASA state, then re-score all. */
-    if (ctx->random_best_length > 0 && ctx->random_best_latency < old_random_latency) {
-        update_on_improvement(
-            ctx->iteration,
-            (double)ctx->random_best_latency,
-            &ctx->random_sasa,
-            0.4,  /* alpha */
-            0.4,  /* beta  */
-            0.2   /* gamma */
+    /* 3) BRUTE */
+    {
+        int old_brute_latency = (ctx->brute_best_length > 0) ? ctx->brute_best_latency : INT_MAX;
+        int rc = brute_force_search_step(
+            ctx, 0, 1,
+            out_nodes_brute, max_size_brute,
+            out_len_brute, out_latency_brute
         );
-
-        recalc_sasa_score(&ctx->aco_sasa,    ctx->iteration, 0.4, 0.4, 0.2);
-        recalc_sasa_score(&ctx->brute_sasa,  ctx->iteration, 0.4, 0.4, 0.2);
-
-        SasaState states[3] = {ctx->aco_sasa, ctx->random_sasa, ctx->brute_sasa};
-        int rank_order[3];
-        compute_ranking(states, 3, rank_order);
-        printf("[RANK] Random improved => order: #%d first, #%d second, #%d third\n",
-               rank_order[0], rank_order[1], rank_order[2]);
-    }
-
-    /*
-     * 3) BRUTE
-     */
-    int old_brute_latency = (ctx->brute_best_length > 0) ? ctx->brute_best_latency : INT_MAX;
-    rc = brute_force_search_step(
-        ctx, 0, 1,
-        out_nodes_brute, max_size_brute,
-        out_len_brute, out_latency_brute
-    );
-    if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND) {
+        if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND) {
 #ifndef _WIN32
-        pthread_mutex_unlock(&ctx->lock);
+            pthread_mutex_unlock(&ctx->lock);
 #endif
-        return rc;
-    }
+            return rc;
+        }
 
-    /* SASA addition: if Brute improved, update SASA state, then re-score all. */
-    if (ctx->brute_best_length > 0 && ctx->brute_best_latency < old_brute_latency) {
-        update_on_improvement(
-            ctx->iteration,
-            (double)ctx->brute_best_latency,
-            &ctx->brute_sasa,
-            0.4,  /* alpha */
-            0.4,  /* beta  */
-            0.2   /* gamma */
-        );
+        if (ctx->brute_best_length > 0 && ctx->brute_best_latency < old_brute_latency) {
+            update_on_improvement(
+                ctx->iteration,
+                (double)ctx->brute_best_latency,
+                &ctx->brute_sasa,
+                ctx->sasa_coeffs.alpha,
+                ctx->sasa_coeffs.beta,
+                ctx->sasa_coeffs.gamma
+            );
 
-        recalc_sasa_score(&ctx->aco_sasa,    ctx->iteration, 0.4, 0.4, 0.2);
-        recalc_sasa_score(&ctx->random_sasa, ctx->iteration, 0.4, 0.4, 0.2);
+            recalc_sasa_score(&ctx->aco_sasa, ctx->iteration,
+                              ctx->sasa_coeffs.alpha,
+                              ctx->sasa_coeffs.beta,
+                              ctx->sasa_coeffs.gamma);
+            recalc_sasa_score(&ctx->random_sasa, ctx->iteration,
+                              ctx->sasa_coeffs.alpha,
+                              ctx->sasa_coeffs.beta,
+                              ctx->sasa_coeffs.gamma);
 
-        SasaState states[3] = {ctx->aco_sasa, ctx->random_sasa, ctx->brute_sasa};
-        int rank_order[3];
-        compute_ranking(states, 3, rank_order);
-        printf("[RANK] Brute improved => order: #%d first, #%d second, #%d third\n",
-               rank_order[0], rank_order[1], rank_order[2]);
+            SasaState states[3] = {ctx->aco_sasa, ctx->random_sasa, ctx->brute_sasa};
+            int rank_order[3];
+            compute_ranking(states, 3, rank_order);
+            printf("[RANK] Brute improved => order: #%d first, #%d second, #%d third\n",
+                   rank_order[0], rank_order[1], rank_order[2]);
+        }
     }
 
 #ifndef _WIN32
@@ -390,6 +436,11 @@ int antnet_run_all_solvers(
     return ERR_SUCCESS;
 }
 
+/*
+ * antnet_init_from_config
+ * Loads a config file, then calls antnet_initialize with those parameters.
+ * On success, the context's config is updated. Thread-safe once context is created.
+ */
 int antnet_init_from_config(const char* config_path)
 {
     if (!config_path) return ERR_INVALID_ARGS;
@@ -420,7 +471,8 @@ int antnet_init_from_config(const char* config_path)
 }
 
 /*
- * antnet_get_config: thread-safe read of the current context config
+ * antnet_get_config
+ * Thread-safe read of the current context config.
  */
 int antnet_get_config(int context_id, AppConfig* out)
 {
@@ -441,9 +493,9 @@ int antnet_get_config(int context_id, AppConfig* out)
 }
 
 /*
- * antnet_get_pheromone_matrix: returns the entire pheromone matrix, thread-safe.
- * It copies up to n*n floats into 'out', where n = ctx->aco_v1.pheromone_size.
- * Returns (n*n) on success, or negative error code on failure.
+ * antnet_get_pheromone_matrix
+ * Copies up to n*n floats into 'out', returns the total count on success,
+ * negative on errors. Thread-safe read.
  */
 int antnet_get_pheromone_matrix(int context_id, float* out, int max_count)
 {
@@ -468,10 +520,10 @@ int antnet_get_pheromone_matrix(int context_id, float* out, int max_count)
         return ERR_ARRAY_TOO_SMALL;
     }
     memcpy(out, ctx->aco_v1.pheromones, sizeof(float) * count);
-
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
 #endif
+
     return count;
 }
 
@@ -480,17 +532,8 @@ int antnet_get_pheromone_matrix(int context_id, float* out, int max_count)
  *
  * GPU-accelerated offscreen heatmap rendering based on a cloud of 2D points
  * and their corresponding pheromone strength values. This function is fully
- * decoupled from the AntNetContext and may be called from any thread.
- * It uses a *persistent* EGL background thread (hr_renderer_async.c).
- *
- * Each point in the input array is rendered as a radially faded sprite, and its
- * color is interpolated from blue to red based on the provided strength value
- * (0.0 = blue, 1.0 = red). The output is written to the provided RGBA buffer.
- *
- * Returns:
- *   ERR_SUCCESS (0) on success
- *   ERR_INVALID_ARGS if any argument is invalid
- *   ERR_INTERNAL_FAILURE if rendering fails
+ * decoupled from AntNetContext and may be called from any thread.
+ * It uses a persistent background renderer (hr_renderer_async).
  */
 int antnet_render_heatmap_rgba(
     const float *pts_xy,
@@ -508,15 +551,12 @@ int antnet_render_heatmap_rgba(
     if (rc != 0) {
         return ERR_INTERNAL_FAILURE;
     }
-
     return ERR_SUCCESS;
 }
 
 /*
  * antnet_renderer_async_init
- * Starts the persistent renderer thread. Call once on application startup.
- * If it is already running, does nothing. 
- * Returns ERR_SUCCESS on success, negative on error.
+ * Starts the persistent renderer thread if not already running. Returns 0 on success.
  */
 int antnet_renderer_async_init(int initial_width, int initial_height)
 {
@@ -529,8 +569,8 @@ int antnet_renderer_async_init(int initial_width, int initial_height)
 
 /*
  * antnet_renderer_async_shutdown
- * Stops the background renderer thread and cleans up. 
- * Safe to call more than once, the second time is no-op.
+ * Stops the background renderer thread if running, cleans up. 
+ * Safe to call multiple times.
  */
 int antnet_renderer_async_shutdown(void)
 {
@@ -573,10 +613,10 @@ int antnet_get_algo_ranking(int context_id, RankingEntry* out, int max_count)
     int rank[3];
     compute_ranking(states, 3, rank);
 
-    /* Prepare local array for all algorithms in descending order of score */
     RankingEntry local[3];
     memset(local, 0, sizeof(local));
 
+    /* Fill local[] in descending order of score based on rank[] */
     for (int i = 0; i < 3; i++) {
         int solver_idx = rank[i];
         if (solver_idx == 0) {
@@ -594,13 +634,124 @@ int antnet_get_algo_ranking(int context_id, RankingEntry* out, int max_count)
         }
     }
 
-    /* Copy local array to out[] */
     memcpy(out, local, sizeof(local));
 
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
 #endif
 
-    /* Return the actual number of algorithms we have (3). */
     return 3;
+}
+
+/*
+ * antnet_set_sasa_params
+ * Updates the SASA coefficients (alpha, beta, gamma) in a thread-safe manner.
+ */
+int antnet_set_sasa_params(int context_id, double alpha, double beta, double gamma)
+{
+    AntNetContext* ctx = get_context_by_id(context_id);
+    if (!ctx) return ERR_INVALID_CONTEXT;
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    ctx->sasa_coeffs.alpha = alpha;
+    ctx->sasa_coeffs.beta  = beta;
+    ctx->sasa_coeffs.gamma = gamma;
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    return ERR_SUCCESS;
+}
+
+/*
+ * antnet_get_sasa_params
+ * Reads the SASA coefficients (alpha, beta, gamma) in a thread-safe manner.
+ */
+int antnet_get_sasa_params(int context_id, double* out_alpha, double* out_beta, double* out_gamma)
+{
+    if (!out_alpha || !out_beta || !out_gamma) {
+        return ERR_INVALID_ARGS;
+    }
+
+    AntNetContext* ctx = get_context_by_id(context_id);
+    if (!ctx) return ERR_INVALID_CONTEXT;
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    *out_alpha = ctx->sasa_coeffs.alpha;
+    *out_beta  = ctx->sasa_coeffs.beta;
+    *out_gamma = ctx->sasa_coeffs.gamma;
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    return ERR_SUCCESS;
+}
+
+/*
+ * antnet_set_aco_params
+ * Updates ACO parameters (alpha, beta, Q, evaporation, num_ants) in a thread-safe manner.
+ * If num_ants <= 0, forces single-ant mode (num_ants=1).
+ */
+int antnet_set_aco_params(int context_id, float alpha, float beta, float Q, float evaporation, int num_ants)
+{
+    AntNetContext* ctx = get_context_by_id(context_id);
+    if (!ctx) return ERR_INVALID_CONTEXT;
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    ctx->aco_v1.alpha       = alpha;
+    ctx->aco_v1.beta        = beta;
+    ctx->aco_v1.Q           = Q;
+    ctx->aco_v1.evaporation = evaporation;
+
+    if (num_ants <= 0) {
+        ctx->aco_v1.num_ants = 1;
+    } else {
+        ctx->aco_v1.num_ants = num_ants;
+    }
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    return ERR_SUCCESS;
+}
+
+/*
+ * antnet_get_aco_params
+ * Reads alpha, beta, Q, evaporation, num_ants in a thread-safe manner.
+ */
+int antnet_get_aco_params(
+    int context_id,
+    float* out_alpha,
+    float* out_beta,
+    float* out_Q,
+    float* out_evaporation,
+    int*  out_num_ants
+)
+{
+    if (!out_alpha || !out_beta || !out_Q || !out_evaporation || !out_num_ants) {
+        return ERR_INVALID_ARGS;
+    }
+
+    AntNetContext* ctx = get_context_by_id(context_id);
+    if (!ctx) return ERR_INVALID_CONTEXT;
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    *out_alpha       = ctx->aco_v1.alpha;
+    *out_beta        = ctx->aco_v1.beta;
+    *out_Q           = ctx->aco_v1.Q;
+    *out_evaporation = ctx->aco_v1.evaporation;
+    *out_num_ants    = ctx->aco_v1.num_ants;
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    return ERR_SUCCESS;
 }
