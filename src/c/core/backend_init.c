@@ -6,6 +6,7 @@
 
 #include "../../../include/core/backend_init.h"
 #include "../../../include/consts/error_codes.h"
+#include "../../../include/managers/config_manager.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

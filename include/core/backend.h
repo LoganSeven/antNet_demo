@@ -192,6 +192,36 @@ int antnet_get_aco_params(
     int*  out_num_ants
 );
 
+/**
+ * antnet_render_path_grid
+ *
+ * Computes a path that visually connects the node_ids list
+ * with 90-degree segments, avoiding intermediate nodes as obstacles.
+ * Writes a polyline of (x,y) pairs to out_coords.
+ * Thread-safe if context is locked externally.
+ *
+ * @param context_id  - context index
+ * @param node_ids    - array of node IDs
+ * @param node_count  - length of node_ids
+ * @param offset_x    - horizontal offset
+ * @param offset_y    - vertical offset
+ * @param out_coords  - float array for (x,y) pairs
+ * @param max_coords  - capacity of out_coords in floats
+ * @param out_count   - number of floats actually written (pairs*2)
+ *
+ * @return ERR_SUCCESS on success or negative error code
+ */
+int antnet_render_path_grid(
+    int context_id,
+    const int* node_ids,
+    int node_count,
+    float offset_x,
+    float offset_y,
+    float* out_coords,
+    int max_coords,
+    int* out_count
+);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,4 +1,5 @@
 /* Relative Path: include/rendering/path_renderer.h */
+#include "../../include/core/backend.h" /* for get_context_by_id(...) */
 #ifndef PATH_RENDERER_H
 #define PATH_RENDERER_H
 
@@ -31,6 +32,21 @@ extern "C" {
  */
 int antnet_render_path_grid(
     int context_id,
+    const int* node_ids,
+    int node_count,
+    float offset_x,
+    float offset_y,
+    float* out_coords,
+    int max_coords,
+    int* out_count
+);
+
+/**
+ * Internal rendering function used by antnet_render_path_grid().
+ * Assumes the context is already locked.
+ */
+int pr_render_path_grid(
+    const AntNetContext* ctx,
     const int* node_ids,
     int node_count,
     float offset_x,

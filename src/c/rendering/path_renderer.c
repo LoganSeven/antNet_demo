@@ -5,9 +5,9 @@
 #include <math.h>
 #include <limits.h>
 
-#include "../../include/core/backend_init.h" /* for get_context_by_id(...) */
-#include "../../include/types/antnet_network_types.h"
-#include "../../include/rendering/path_renderer.h"
+#include "../../../include/core/backend_init.h" /* for get_context_by_id(...) */
+#include "../../../include/types/antnet_network_types.h"
+#include "../../../include/rendering/path_renderer.h"
 
 /* ---------------------------------------------------------
    Internal configuration for the routing grid
@@ -102,8 +102,10 @@ static void map_to_grid(
     float ry = (y - min_y) / (max_y - min_y);
 
     /* clamp for safety */
-    if (rx < 0.0f) rx = 0.0f; if (rx > 1.0f) rx = 1.0f;
-    if (ry < 0.0f) ry = 0.0f; if (ry > 1.0f) ry = 1.0f;
+    if (rx < 0.0f) rx = 0.0f;
+    if (rx > 1.0f) rx = 1.0f;
+    if (ry < 0.0f) ry = 0.0f;
+    if (ry > 1.0f) ry = 1.0f;
 
     *gx = (int)(rx * (GRID_WIDTH  - 1));
     *gy = (int)(ry * (GRID_HEIGHT - 1));
@@ -328,7 +330,7 @@ static void gridcell_to_render_xy(
 
 /* internal function that performs the entire path rendering,
    assuming the caller has already locked the context. */
-static int pr_render_path_grid(
+    int pr_render_path_grid(
     const AntNetContext* ctx,
     const int* node_ids,
     int node_count,
