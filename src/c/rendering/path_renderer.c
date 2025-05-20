@@ -80,10 +80,10 @@ static void compute_bounding_box(const AntNetContext* ctx, float* min_x, float* 
         if (ny > *max_y) *max_y = ny;
     }
     /* Avoid degenerate zero-area bounding box */
-    if (*max_x - *min_x < 1.0f) {
+    if ((*max_x - *min_x) < 1.0f) {
         *max_x = *min_x + 1.0f;
     }
-    if (*max_y - *min_y < 1.0f) {
+    if ((*max_y - *min_y) < 1.0f) {
         *max_y = *min_y + 1.0f;
     }
 }
@@ -141,7 +141,7 @@ static int pop_lowest_f_cost(AStarNode* nodes, int width, int height)
     return index;
 }
 
-/* 
+/*
  * A* search in a discrete grid with obstacles[] = 1 for blocked, 0 for free
  * pathOut: array of GridPos to store path cells
  */
@@ -328,9 +328,15 @@ static void gridcell_to_render_xy(
     *out_y = fy + offset_y;
 }
 
-/* internal function that performs the entire path rendering,
-   assuming the caller has already locked the context. */
-    int pr_render_path_grid(
+/*
+ * pr_render_path_grid
+ *
+ * Internal function that performs the entire path rendering,
+ * assuming the caller has already locked the context.
+ * This is used by antnet_render_path_grid(...) and
+ * antnet_render_path_grid_offline(...).
+ */
+int pr_render_path_grid(
     const AntNetContext* ctx,
     const int* node_ids,
     int node_count,

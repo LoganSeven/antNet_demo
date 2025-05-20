@@ -172,6 +172,7 @@ int antnet_set_sasa_params(int context_id, double alpha, double beta, double gam
 int antnet_get_sasa_params(int context_id, double *out_alpha, double *out_beta, double *out_gamma);
 int antnet_set_aco_params(int context_id, float alpha, float beta, float Q, float evaporation, int num_ants);
 int antnet_get_aco_params(int context_id, float *out_alpha, float *out_beta, float *out_Q, float *out_evaporation, int *out_num_ants);
+int antnet_render_path_grid_offline(int context_id, const int *node_ids, int node_count, float offset_x, float offset_y, float *out_coords, int max_coords, int *out_count);
 int antnet_render_path_grid(int context_id, const int *node_ids, int node_count, float offset_x, float offset_y, float *out_coords, int max_coords, int *out_count);
 int antnet_update_topology(int context_id, const NodeData *nodes, int num_nodes, const EdgeData *edges, int num_edges);
 int random_search_path(AntNetContext *ctx, int start_id, int end_id, int *out_nodes, int max_size, int *out_path_len, int *out_total_latency);

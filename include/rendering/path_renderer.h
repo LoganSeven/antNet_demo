@@ -17,18 +17,8 @@ extern "C" {
  * avoiding other nodes as obstacles. The final path is returned
  * as a list of consecutive (x,y) points forming a polyline.
  *
- * Thread-safe usage requires external locking of the context by the caller.
- *
- * @param context_id  - context handle
- * @param node_ids    - array of node IDs forming the path
- * @param node_count  - number of node IDs in node_ids
- * @param offset_x    - horizontal visual offset for all returned coordinates
- * @param offset_y    - vertical visual offset for all returned coordinates
- * @param out_coords  - preallocated float array where (x,y) pairs will be written
- * @param max_coords  - capacity of out_coords in number of floats
- * @param out_count   - output: number of floats actually written to out_coords (pairs * 2)
- *
- * @return 0 on success, non-zero on failure (no path, insufficient space, etc.)
+ * Thread-safe usage requires context locking by the caller,
+ * or by the function that calls it.
  */
 int antnet_render_path_grid(
     int context_id,
@@ -42,8 +32,11 @@ int antnet_render_path_grid(
 );
 
 /**
- * Internal rendering function used by antnet_render_path_grid().
- * Assumes the context is already locked.
+ * pr_render_path_grid
+ *
+ * Internal rendering function used by antnet_render_path_grid(...).
+ * The context must already be locked externally. Do not call this
+ * function directly unless you have acquired the necessary lock.
  */
 int pr_render_path_grid(
     const AntNetContext* ctx,

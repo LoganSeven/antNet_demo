@@ -88,6 +88,12 @@ int antnet_renderer_async_shutdown(void)
     return ERR_SUCCESS;
 }
 
+/*
+ * antnet_render_path_grid
+ *
+ * Locks the context, calls the internal pr_render_path_grid, unlocks, then
+ * returns ERR_SUCCESS or an error code.
+ */
 int antnet_render_path_grid(
     int context_id,
     const int* node_ids,
@@ -113,8 +119,8 @@ int antnet_render_path_grid(
 
     /* Delegates to the internal path_renderer logic */
     int rc = pr_render_path_grid(ctx, node_ids, node_count,
-                             offset_x, offset_y,
-                             out_coords, max_coords, out_count);
+                                 offset_x, offset_y,
+                                 out_coords, max_coords, out_count);
 
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
@@ -124,4 +130,40 @@ int antnet_render_path_grid(
         return ERR_SUCCESS;
     }
     return ERR_INTERNAL_FAILURE;
+}
+
+/*
+ * antnet_render_path_grid_offline
+ *
+ * Public wrapper around pr_render_path_grid that follows the same thread-safety
+ * and context lookup pattern, for use from Python or other modules that
+ * need an offline path computation without other overhead.
+ */
+int antnet_render_path_grid_offline(
+    int context_id,
+    const int* node_ids,
+    int node_count,
+    float offset_x,
+    float offset_y,
+    float* out_coords,
+    int max_coords,
+    int* out_count
+)
+{
+    AntNetContext* ctx = get_context_by_id(context_id);
+    if (!ctx) return ERR_INVALID_CONTEXT;
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+
+    int rc = pr_render_path_grid(ctx, node_ids, node_count,
+                                 offset_x, offset_y,
+                                 out_coords, max_coords, out_count);
+
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    return (rc == 0) ? ERR_SUCCESS : ERR_INTERNAL_FAILURE;
 }
