@@ -51,6 +51,7 @@ set(SOURCE_FILES
     src/c/managers/hop_map_manager.c
     src/c/rendering/heatmap_renderer.c
     src/c/rendering/heatmap_renderer_async.c
+    src/c/rendering/path_renderer.c
     third_party/ini.c
 )
 

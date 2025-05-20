@@ -34,6 +34,7 @@ ffi.set_source(
 #include "managers/hop_map_manager.h"
 #include "rendering/heatmap_renderer.h"
 #include "rendering/heatmap_renderer_async.h"
+#include "rendering/path_renderer.h"
 #include "types/antnet_aco_v1_params.h"
 #include "types/antnet_aco_v1_types.h"
 #include "types/antnet_brute_force_types.h"
@@ -57,6 +58,7 @@ ffi.set_source(
         os.path.join(src_c_dir, "core/backend_solvers.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer_async.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer.c"),
+        os.path.join(src_c_dir, "rendering/path_renderer.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1_shared_structs.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_brute_force.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1_threaded.c"),

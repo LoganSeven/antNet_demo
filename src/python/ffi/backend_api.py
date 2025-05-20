@@ -286,7 +286,57 @@ class AntNetWrapper:
             pass
 
 
-    # (all antnet_* functions accounted for in manual code)
+    def antnet_get_aco_params(self, out_alpha, out_beta, out_Q, out_evaporation, out_num_ants):
+        """AUTO-GENERATED thin wrapper for lib.antnet_get_aco_params.
+    [File: Unknown] MUST BE IMPLEMENTED 🟥
+    Parameter signature (excluding context_id): [('float*', 'out_alpha'), ('float*', 'out_beta'), ('float*', 'out_Q'), ('float*', 'out_evaporation'), ('int*', 'out_num_ants')]"""
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for antnet_get_aco_params")
+        rc = lib.antnet_get_aco_params(self.context_id, out_alpha, out_beta, out_Q, out_evaporation, out_num_ants)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("antnet_get_aco_params failed with code {rc}")
+        raise RuntimeError("antnet_get_aco_params returned unexpected {rc}")
+
+    def antnet_get_sasa_params(self, out_alpha, out_beta, out_gamma):
+        """AUTO-GENERATED thin wrapper for lib.antnet_get_sasa_params.
+    [File: Unknown] MUST BE IMPLEMENTED 🟥
+    Parameter signature (excluding context_id): [('double*', 'out_alpha'), ('double*', 'out_beta'), ('double*', 'out_gamma')]"""
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for antnet_get_sasa_params")
+        rc = lib.antnet_get_sasa_params(self.context_id, out_alpha, out_beta, out_gamma)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("antnet_get_sasa_params failed with code {rc}")
+        raise RuntimeError("antnet_get_sasa_params returned unexpected {rc}")
+
+    def antnet_set_aco_params(self, alpha, beta, Q, evaporation, num_ants):
+        """AUTO-GENERATED thin wrapper for lib.antnet_set_aco_params.
+    [File: Unknown] MUST BE IMPLEMENTED 🟥
+    Parameter signature (excluding context_id): [('float', 'alpha'), ('float', 'beta'), ('float', 'Q'), ('float', 'evaporation'), ('int', 'num_ants')]"""
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for antnet_set_aco_params")
+        rc = lib.antnet_set_aco_params(self.context_id, alpha, beta, Q, evaporation, num_ants)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("antnet_set_aco_params failed with code {rc}")
+        raise RuntimeError("antnet_set_aco_params returned unexpected {rc}")
+
+    def antnet_set_sasa_params(self, alpha, beta, gamma):
+        """AUTO-GENERATED thin wrapper for lib.antnet_set_sasa_params.
+    [File: Unknown] MUST BE IMPLEMENTED 🟥
+    Parameter signature (excluding context_id): [('double', 'alpha'), ('double', 'beta'), ('double', 'gamma')]"""
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for antnet_set_sasa_params")
+        rc = lib.antnet_set_sasa_params(self.context_id, alpha, beta, gamma)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("antnet_set_sasa_params failed with code {rc}")
+        raise RuntimeError("antnet_set_sasa_params returned unexpected {rc}")
 
 
 # GPU async renderer helpers
