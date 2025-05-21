@@ -26,12 +26,12 @@ ffi.set_source(
 #include "core/backend_solvers.h"
 #include "core/backend_thread_defs.h"
 #include "core/backend_topology.h"
-#include "core/score_evaluation.h"
 #include "managers/config_manager.h"
 #include "managers/cpu_acoV1_algo_manager.h"
 #include "managers/cpu_brute_force_algo_manager.h"
 #include "managers/cpu_random_algo_manager.h"
 #include "managers/hop_map_manager.h"
+#include "managers/ranking_manager.h"
 #include "rendering/heatmap_renderer.h"
 #include "rendering/heatmap_renderer_async.h"
 #include "rendering/path_renderer.h"
@@ -46,6 +46,7 @@ ffi.set_source(
 """,
     sources=[
         os.path.join(src_c_dir, "managers/cpu_acoV1_algo_manager.c"),
+        os.path.join(src_c_dir, "managers/ranking_manager.c"),
         os.path.join(src_c_dir, "managers/cpu_random_algo_manager.c"),
         os.path.join(src_c_dir, "managers/config_manager.c"),
         os.path.join(src_c_dir, "managers/cpu_brute_force_algo_manager.c"),
@@ -54,7 +55,6 @@ ffi.set_source(
         os.path.join(src_c_dir, "core/backend_params.c"),
         os.path.join(src_c_dir, "core/backend_topology.c"),
         os.path.join(src_c_dir, "core/backend_init.c"),
-        os.path.join(src_c_dir, "core/score_evaluation.c"),
         os.path.join(src_c_dir, "core/backend_solvers.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer_async.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer.c"),

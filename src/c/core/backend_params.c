@@ -6,7 +6,7 @@
 
 #include "../../../include/core/backend_params.h"
 #include "../../../include/managers/config_manager.h"
-#include "../../../include/core/score_evaluation.h"
+#include "../../../include/managers/ranking_manager.h"
 #include "../../../include/rendering/heatmap_renderer_async.h"
 #include "../../../include/consts/error_codes.h"
 #include <stdio.h>

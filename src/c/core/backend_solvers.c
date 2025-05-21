@@ -10,7 +10,7 @@
 #include "../../../include/managers/cpu_acoV1_algo_manager.h"
 #include "../../../include/managers/cpu_random_algo_manager.h"
 #include "../../../include/managers/cpu_brute_force_algo_manager.h"
-#include "../../../include/core/score_evaluation.h"
+#include "../../../include/managers/ranking_manager.h"
 #include "../../../include/consts/error_codes.h"
 #include <limits.h>
 #include <stdio.h>

@@ -1,11 +1,11 @@
-/* Relative Path: include/core/score_evaluation.h */
+/* Relative Path: include/managers/ranking_manager.h */
 /*
  * Provides the incremental SASA scoring approach for ranking path-finder algorithms.
  * The struct SasaState holds the incremental metrics for one algorithm.
  */
 
-#ifndef SCORE_EVALUATION_H
-#define SCORE_EVALUATION_H
+#ifndef RANKING_MANAGER_H
+#define RANKING_MANAGER_H
 
 /*
  * SasaState
@@ -68,4 +68,4 @@ void priv_recalc_sasa_score(
  */
 void priv_compute_ranking(const SasaState *states, int count, int *rank_out);
 
-#endif /* SCORE_EVALUATION_H */
+#endif /* RANKING_MANAGER_H */

@@ -31,7 +31,7 @@ extern "C" {
 /* 3) The main backend headers that declare the functions Python needs */
 #include "./core/backend.h"            // antnet_initialize, antnet_run_iteration, etc.
 #include "./core/backend_topology.h"   // antnet_update_topology
-#include "./core/score_evaluation.h"
+#include "./managers/ranking_manager.h"
 /* 4) Other solver modules or managers that Python calls or references */
 #include "./algo/cpu/cpu_random_algo.h"        // random_search_path
 #include "./algo/cpu/cpu_brute_force.h"  // brute_force_search_step

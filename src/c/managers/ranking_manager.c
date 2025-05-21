@@ -1,10 +1,10 @@
-/* Relative Path: src/c/core/score_evaluation.c */
+/* Relative Path: src/c/managers/ranking_manager.c */
 /*
  * Implements the incremental SASA scoring logic and a helper function
  * to rank multiple algorithms by their SASA score.
  */
 
-#include "../../../include/core/score_evaluation.h"
+#include "../../../include/managers/ranking_manager.h"
 #include <float.h>  /* for DBL_MAX */
 #include <math.h>
 
