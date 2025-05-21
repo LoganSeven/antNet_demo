@@ -85,11 +85,11 @@ typedef struct AntNetContext
 
 /* public API */
 
-int antnet_initialize(int node_count, int min_hops, int max_hops);
-int antnet_run_iteration(int context_id);
-int antnet_shutdown(int context_id);
+int pub_initialize(int node_count, int min_hops, int max_hops);
+int pub_run_iteration(int context_id);
+int pub_shutdown(int context_id);
 
-int antnet_get_best_path(
+int pub_get_best_path(
     int  context_id,
     int *out_nodes,
     int  max_size,
@@ -97,7 +97,7 @@ int antnet_get_best_path(
     int *out_total_latency
 );
 
-int antnet_run_all_solvers(
+int pub_run_all_solvers(
     int  context_id,
     /* aco */
     int *out_nodes_aco,
@@ -116,30 +116,30 @@ int antnet_run_all_solvers(
     int *out_latency_brute
 );
 
-int antnet_init_from_config(const char *config_path);
+int pub_init_from_config(const char *config_path);
 
 /*
- * antnet_get_config
+ * pub_get_config
  * Thread-safe read of the current context config.
  */
-int antnet_get_config(int context_id, AppConfig* out);
+int pub_get_config(int context_id, AppConfig* out);
 
 /*
- * antnet_get_pheromone_matrix
+ * pub_get_pheromone_matrix
  * Thread-safe retrieval of the entire pheromone matrix of size n*n,
  * where n = ctx->aco_v1.pheromone_size.
  * Writes up to max_count floats into 'out'. Returns the number of floats (n*n)
  * on success, or negative on error.
  */
-int antnet_get_pheromone_matrix(int context_id, float* out, int max_count);
+int pub_get_pheromone_matrix(int context_id, float* out, int max_count);
 
 /*
- * antnet_render_heatmap_rgba
+ * pub_render_heatmap_rgba
  *
  * Renders a heatmap from the given point cloud and pheromone values.
  * Uses the persistent background renderer in heatmap_renderer_async.c.
  */
-int antnet_render_heatmap_rgba(
+int pub_render_heatmap_rgba(
     const float *pts_xy,
     const float *strength,
     int n,
@@ -148,42 +148,42 @@ int antnet_render_heatmap_rgba(
     int height
 );
 
-int antnet_renderer_async_init(int initial_width, int initial_height);
-int antnet_renderer_async_shutdown(void);
+int pub_renderer_async_init(int initial_width, int initial_height);
+int pub_renderer_async_shutdown(void);
 
 /*
- * antnet_get_algo_ranking
+ * pub_get_algo_ranking
  * Returns the list of algorithms sorted by SASA score in descending order.
  * Writes up to max_count entries in out[]. Returns the actual count of
  * algorithms (e.g., 3) on success. If max_count < 3, returns a negative error.
  */
-int antnet_get_algo_ranking(int context_id, RankingEntry* out, int max_count);
+int pub_get_algo_ranking(int context_id, RankingEntry* out, int max_count);
 
 /*
- * NEW: antnet_set_sasa_params
+ * NEW: pub_set_sasa_params
  * Updates the SASA coefficients (alpha, beta, gamma) used by the solvers
  * to compute incremental SASA scoring. Thread-safe.
  */
-int antnet_set_sasa_params(int context_id, double alpha, double beta, double gamma);
+int pub_set_sasa_params(int context_id, double alpha, double beta, double gamma);
 
 /*
- * NEW: antnet_get_sasa_params
+ * NEW: pub_get_sasa_params
  * Reads the SASA coefficients (alpha, beta, gamma) from the context. Thread-safe.
  */
-int antnet_get_sasa_params(int context_id, double* out_alpha, double* out_beta, double* out_gamma);
+int pub_get_sasa_params(int context_id, double* out_alpha, double* out_beta, double* out_gamma);
 
 /*
- * NEW: antnet_set_aco_params
+ * NEW: pub_set_aco_params
  * Updates the main ACO parameters in the context (alpha, beta, Q, evaporation, num_ants).
  * Thread-safe.
  */
-int antnet_set_aco_params(int context_id, float alpha, float beta, float Q, float evaporation, int num_ants);
+int pub_set_aco_params(int context_id, float alpha, float beta, float Q, float evaporation, int num_ants);
 
 /*
- * NEW: antnet_get_aco_params
+ * NEW: pub_get_aco_params
  * Reads the ACO parameters (alpha, beta, Q, evaporation, num_ants). Thread-safe.
  */
-int antnet_get_aco_params(
+int pub_get_aco_params(
     int context_id,
     float* out_alpha,
     float* out_beta,
@@ -193,9 +193,9 @@ int antnet_get_aco_params(
 );
 
 /**
- * antnet_render_path_grid_offline
+ * pub_render_path_grid_offline
  *
- * Public wrapper around the internal pr_render_path_grid function.
+ * Public wrapper around the internal priv_render_path_grid function.
  * Thread-safe. Returns ERR_SUCCESS on success, negative on failure.
  *
  * @param context_id  - context index
@@ -207,7 +207,7 @@ int antnet_get_aco_params(
  * @param max_coords  - capacity of out_coords in floats
  * @param out_count   - number of floats actually written (pairs*2)
  */
-int antnet_render_path_grid_offline(
+int pub_render_path_grid_offline(
     int context_id,
     const int* node_ids,
     int node_count,
@@ -219,7 +219,7 @@ int antnet_render_path_grid_offline(
 );
 
 /**
- * antnet_render_path_grid
+ * pub_render_path_grid
  *
  * Computes a path that visually connects the node_ids list
  * with 90-degree segments, avoiding intermediate nodes as obstacles.
@@ -237,7 +237,7 @@ int antnet_render_path_grid_offline(
  *
  * @return ERR_SUCCESS on success or negative error code
  */
-int antnet_render_path_grid(
+int pub_render_path_grid(
     int context_id,
     const int* node_ids,
     int node_count,

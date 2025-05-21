@@ -329,14 +329,14 @@ static void gridcell_to_render_xy(
 }
 
 /*
- * pr_render_path_grid
+ * priv_render_path_grid
  *
  * Internal function that performs the entire path rendering,
  * assuming the caller has already locked the context.
- * This is used by antnet_render_path_grid(...) and
+ * This is used by pub_render_path_grid(...) and
  * antnet_render_path_grid_offline(...).
  */
-int pr_render_path_grid(
+int priv_render_path_grid(
     const AntNetContext* ctx,
     const int* node_ids,
     int node_count,

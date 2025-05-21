@@ -1,4 +1,4 @@
-# src/python/ffi/backend_api.py
+# Relative Path: src/python/ffi/backend_api.py
 # High-level Python wrapper for the C AntNet backend.
 # security/hardening: negative C return code ⇒ ValueError
 # unexpected positive non-zero ⇒ RuntimeError
@@ -62,9 +62,9 @@ class AntNetWrapper:
         if from_config is not None:
             if not isinstance(from_config, str):
                 raise ValueError("from_config must be a str path to .ini")
-            rc = lib.antnet_init_from_config(from_config.encode("utf-8"))
+            rc = lib.pub_init_from_config(from_config.encode("utf-8"))
             if rc < 0:
-                raise ValueError(f"antnet_init_from_config failed with code {rc}")
+                raise ValueError(f"pub_init_from_config failed with code {rc}")
             self.context_id = rc
             return
 
@@ -78,9 +78,9 @@ class AntNetWrapper:
 
         # 3) raw numbers
         if node_count is not None and min_hops is not None and max_hops is not None:
-            rc = lib.antnet_initialize(node_count, min_hops, max_hops)
+            rc = lib.pub_initialize(node_count, min_hops, max_hops)
             if rc < 0:
-                raise ValueError(f"antnet_initialize failed with code {rc}")
+                raise ValueError(f"pub_initialize failed with code {rc}")
             self.context_id = rc
             return
 
@@ -108,9 +108,9 @@ class AntNetWrapper:
         if self.context_id is None:
             raise ValueError("No valid context_id")
         cfg_ptr = ffi.new("AppConfig*")
-        rc = lib.antnet_get_config(self.context_id, cfg_ptr)
+        rc = lib.pub_get_config(self.context_id, cfg_ptr)
         if rc != 0:
-            raise ValueError(f"antnet_get_config failed with code {rc}")
+            raise ValueError(f"pub_get_config failed with code {rc}")
         return {
             "nb_ants":               cfg_ptr.nb_ants,
             "set_nb_nodes":          cfg_ptr.set_nb_nodes,
@@ -135,7 +135,7 @@ class AntNetWrapper:
 
     # ────────────────────────── iteration ───────────────────────────
     def run_iteration(self) -> None:
-        rc = lib.antnet_run_iteration(self.context_id)
+        rc = lib.pub_run_iteration(self.context_id)
         if rc == ERR_SUCCESS:
             return
         if rc < 0:
@@ -149,7 +149,7 @@ class AntNetWrapper:
         len_ptr   = ffi.new("int*")
         lat_ptr   = ffi.new("int*")
 
-        rc = lib.antnet_get_best_path(self.context_id, nodes_buf, max_nodes, len_ptr, lat_ptr)
+        rc = lib.pub_get_best_path(self.context_id, nodes_buf, max_nodes, len_ptr, lat_ptr)
         if rc != 0:
             raise ValueError(f"get_best_path failed with code {rc}")
         return {
@@ -196,7 +196,7 @@ class AntNetWrapper:
             edge_arr[j].from_id = from_id
             edge_arr[j].to_id   = to_id
 
-        rc = lib.antnet_update_topology(self.context_id, node_arr, n, edge_arr, e)
+        rc = lib.pub_update_topology(self.context_id, node_arr, n, edge_arr, e)
         if rc == 0:
             return
         if rc < 0:
@@ -213,7 +213,7 @@ class AntNetWrapper:
         a_len = ffi.new("int*"); r_len = ffi.new("int*"); b_len = ffi.new("int*")
         a_lat = ffi.new("int*"); r_lat = ffi.new("int*"); b_lat = ffi.new("int*")
 
-        rc = lib.antnet_run_all_solvers(
+        rc = lib.pub_run_all_solvers(
             self.context_id,
             a_nodes, max_nodes, a_len, a_lat,
             r_nodes, max_nodes, r_len, r_lat,
@@ -243,7 +243,7 @@ class AntNetWrapper:
             raise ValueError("Invalid context_id")
         max_floats = 1024 * 1024
         buf = ffi.new("float[]", max_floats)
-        rc = lib.antnet_get_pheromone_matrix(self.context_id, buf, max_floats)
+        rc = lib.pub_get_pheromone_matrix(self.context_id, buf, max_floats)
         if rc < 0:
             raise ValueError(f"get_pheromone_matrix failed with code {rc}")
         return [buf[i] for i in range(rc)]
@@ -254,7 +254,7 @@ class AntNetWrapper:
             raise ValueError("Invalid context_id")
         max_algs = 8
         rank_arr = ffi.new("RankingEntry[]", max_algs)
-        rc = lib.antnet_get_algo_ranking(self.context_id, rank_arr, max_algs)
+        rc = lib.pub_get_algo_ranking(self.context_id, rank_arr, max_algs)
         if rc < 0:
             raise ValueError(f"get_algo_ranking failed with code {rc}")
         result: list[dict] = []
@@ -271,13 +271,13 @@ class AntNetWrapper:
     def shutdown(self) -> None:
         if self.context_id is None:
             return
-        rc = lib.antnet_shutdown(self.context_id)
+        rc = lib.pub_shutdown(self.context_id)
         if rc == 0:
             self.context_id = None
             return
         if rc < 0:
-            raise ValueError(f"antnet_shutdown failed with code {rc}")
-        raise RuntimeError(f"antnet_shutdown returned unexpected {rc}")
+            raise ValueError(f"pub_shutdown failed with code {rc}")
+        raise RuntimeError(f"pub_shutdown returned unexpected {rc}")
 
     def __del__(self):
         try:
@@ -286,60 +286,8 @@ class AntNetWrapper:
             pass
 
 
-    def get_aco_params(self, out_alpha, out_beta, out_Q, out_evaporation, out_num_ants):
-        if self.context_id is None:
-            raise ValueError("Invalid context_id for antnet_get_aco_params")
-        rc = lib.antnet_get_aco_params(self.context_id, out_alpha, out_beta, out_Q, out_evaporation, out_num_ants)
-        if rc in (0, ERR_SUCCESS):
-            return rc
-        if rc < 0:
-            raise ValueError("antnet_get_aco_params failed with code {rc}")
-        raise RuntimeError("antnet_get_aco_params returned unexpected {rc}")
 
 
-
-    def get_sasa_params(self, out_alpha, out_beta, out_gamma):
-        if self.context_id is None:
-            raise ValueError("Invalid context_id for antnet_get_sasa_params")
-        rc = lib.antnet_get_sasa_params(self.context_id, out_alpha, out_beta, out_gamma)
-        if rc in (0, ERR_SUCCESS):
-            return rc
-        if rc < 0:
-            raise ValueError("antnet_get_sasa_params failed with code {rc}")
-        raise RuntimeError("antnet_get_sasa_params returned unexpected {rc}")
-
-    
-
-    def render_path_grid(self, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count):
-        if self.context_id is None:
-            raise ValueError("Invalid context_id for antnet_render_path_grid")
-        rc = lib.antnet_render_path_grid(self.context_id, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count)
-        if rc in (0, ERR_SUCCESS):
-            return rc
-        if rc < 0:
-            raise ValueError("antnet_render_path_grid failed with code {rc}")
-        raise RuntimeError("antnet_render_path_grid returned unexpected {rc}")
-
-    def render_path_grid_offline(self, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count):
-        if self.context_id is None:
-            raise ValueError("Invalid context_id for antnet_render_path_grid_offline")
-        rc = lib.antnet_render_path_grid_offline(self.context_id, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count)
-        if rc in (0, ERR_SUCCESS):
-            return rc
-        if rc < 0:
-            raise ValueError("antnet_render_path_grid_offline failed with code {rc}")
-        raise RuntimeError("antnet_render_path_grid_offline returned unexpected {rc}")
-
-
-    def set_sasa_params(self, alpha, beta, gamma):
-        if self.context_id is None:
-            raise ValueError("Invalid context_id for antnet_set_sasa_params")
-        rc = lib.antnet_set_sasa_params(self.context_id, alpha, beta, gamma)
-        if rc in (0, ERR_SUCCESS):
-            return rc
-        if rc < 0:
-            raise ValueError("antnet_set_sasa_params failed with code {rc}")
-        raise RuntimeError("antnet_set_sasa_params returned unexpected {rc}")
 
   
 
@@ -351,18 +299,18 @@ def init_async_renderer(width: int = 64, height: int = 64) -> None:
     global _renderer_initialized
     if _renderer_initialized:
         return
-    rc = lib.antnet_renderer_async_init(width, height)
+    rc = lib.pub_renderer_async_init(width, height)
     if rc != 0:
-        raise RuntimeError(f"antnet_renderer_async_init failed with code {rc}")
+        raise RuntimeError(f"pub_renderer_async_init failed with code {rc}")
     _renderer_initialized = True
 
 def shutdown_async_renderer() -> None:
     global _renderer_initialized
     if not _renderer_initialized:
         return
-    rc = lib.antnet_renderer_async_shutdown()
+    rc = lib.pub_renderer_async_shutdown()
     if rc != 0:
-        raise RuntimeError(f"antnet_renderer_async_shutdown failed with code {rc}")
+        raise RuntimeError(f"pub_renderer_async_shutdown failed with code {rc}")
     _renderer_initialized = False
 
 def render_heatmap_rgba(
@@ -385,8 +333,202 @@ def render_heatmap_rgba(
     c_str = ffi.new("float[]", strength)
     buf   = ffi.new("unsigned char[]", width * height * 4)
 
-    rc = lib.antnet_render_heatmap_rgba(c_pts, c_str, len(strength), buf, width, height)
+    rc = lib.pub_render_heatmap_rgba(c_pts, c_str, len(strength), buf, width, height)
     if rc != 0:
-        raise RuntimeError(f"antnet_render_heatmap_rgba failed with code {rc}")
+        raise RuntimeError(f"pub_render_heatmap_rgba failed with code {rc}")
 
-    return ffi.buffer(buf, width * height * 4)[:]
+    return ffi.buffer(buf, width * height * 4)[:]    
+    
+    # AUTO-GENERATED stub for pub_config_load
+    def config_load(self, cfg, filepath):
+        """Thin wrapper for lib.pub_config_load()"""
+        print("🟥 pub_config_load → config_load — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for config_load")
+
+        rc = lib.pub_config_load(self.context_id, cfg, filepath)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("config_load failed with code {rc}")
+        raise RuntimeError("config_load returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_config_save
+    def config_save(self, cfg, filepath):
+        """Thin wrapper for lib.pub_config_save()"""
+        print("🟥 pub_config_save → config_save — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for config_save")
+
+        rc = lib.pub_config_save(self.context_id, cfg, filepath)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("config_save failed with code {rc}")
+        raise RuntimeError("config_save returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_config_set_defaults
+    def config_set_defaults(self, cfg):
+        """Thin wrapper for lib.pub_config_set_defaults()"""
+        print("🟥 pub_config_set_defaults → config_set_defaults — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for config_set_defaults")
+
+        rc = lib.pub_config_set_defaults(self.context_id, cfg)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("config_set_defaults failed with code {rc}")
+        raise RuntimeError("config_set_defaults returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_get_best_path
+    def get_best_path(self, out_nodes, max_size, out_path_len, out_total_latency):
+        """Thin wrapper for lib.pub_get_best_path()"""
+        print("🟥 pub_get_best_path → get_best_path — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for get_best_path")
+
+        rc = lib.pub_get_best_path(self.context_id, out_nodes, max_size, out_path_len, out_total_latency)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("get_best_path failed with code {rc}")
+        raise RuntimeError("get_best_path returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_init_from_config
+    def init_from_config(self, config_path):
+        """Thin wrapper for lib.pub_init_from_config()"""
+        print("🟥 pub_init_from_config → init_from_config — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for init_from_config")
+
+        rc = lib.pub_init_from_config(self.context_id, config_path)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("init_from_config failed with code {rc}")
+        raise RuntimeError("init_from_config returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_initialize
+    def initialize(self, node_count, min_hops, max_hops):
+        """Thin wrapper for lib.pub_initialize()"""
+        print("🟥 pub_initialize → initialize — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for initialize")
+
+        rc = lib.pub_initialize(self.context_id, node_count, min_hops, max_hops)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("initialize failed with code {rc}")
+        raise RuntimeError("initialize returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_renderer_async_init
+    def renderer_async_init(self, initial_width, initial_height):
+        """Thin wrapper for lib.pub_renderer_async_init()"""
+        print("🟥 pub_renderer_async_init → renderer_async_init — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for renderer_async_init")
+
+        rc = lib.pub_renderer_async_init(self.context_id, initial_width, initial_height)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("renderer_async_init failed with code {rc}")
+        raise RuntimeError("renderer_async_init returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_renderer_async_shutdown
+    def renderer_async_shutdown(self, void):
+        """Thin wrapper for lib.pub_renderer_async_shutdown()"""
+        print("🟥 pub_renderer_async_shutdown → renderer_async_shutdown — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for renderer_async_shutdown")
+
+        rc = lib.pub_renderer_async_shutdown(self.context_id, void)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("renderer_async_shutdown failed with code {rc}")
+        raise RuntimeError("renderer_async_shutdown returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_set_aco_params
+    def set_aco_params(self, alpha, beta, Q, evaporation, num_ants):
+        """Thin wrapper for lib.pub_set_aco_params()"""
+        print("🟥 pub_set_aco_params → set_aco_params — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for set_aco_params")
+
+        rc = lib.pub_set_aco_params(self.context_id, alpha, beta, Q, evaporation, num_ants)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("set_aco_params failed with code {rc}")
+        raise RuntimeError("set_aco_params returned unexpected {rc}")
+    # AUTO-GENERATED stub for pub_set_sasa_params
+    def set_sasa_params(self, alpha, beta, gamma):
+        """Thin wrapper for lib.pub_set_sasa_params()"""
+        print("🟥 pub_set_sasa_params → set_sasa_params — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for set_sasa_params")
+
+        rc = lib.pub_set_sasa_params(self.context_id, alpha, beta, gamma)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("set_sasa_params failed with code {rc}")
+        raise RuntimeError("set_sasa_params returned unexpected {rc}")
+    # AUTO-GENERATED stub for pub_get_aco_params
+    def get_aco_params(self, out_alpha, out_beta, out_Q, out_evaporation, out_num_ants):
+        """Thin wrapper for lib.pub_get_aco_params()"""
+        print("🟥 pub_get_aco_params → get_aco_params — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for get_aco_params")
+
+        rc = lib.pub_get_aco_params(self.context_id, out_alpha, out_beta, out_Q, out_evaporation, out_num_ants)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("get_aco_params failed with code {rc}")
+        raise RuntimeError("get_aco_params returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_get_sasa_params
+    def get_sasa_params(self, out_alpha, out_beta, out_gamma):
+        """Thin wrapper for lib.pub_get_sasa_params()"""
+        print("🟥 pub_get_sasa_params → get_sasa_params — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for get_sasa_params")
+
+        rc = lib.pub_get_sasa_params(self.context_id, out_alpha, out_beta, out_gamma)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("get_sasa_params failed with code {rc}")
+        raise RuntimeError("get_sasa_params returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_render_path_grid
+    def render_path_grid(self, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count):
+        """Thin wrapper for lib.pub_render_path_grid()"""
+        print("🟥 pub_render_path_grid → render_path_grid — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for render_path_grid")
+
+        rc = lib.pub_render_path_grid(self.context_id, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("render_path_grid failed with code {rc}")
+        raise RuntimeError("render_path_grid returned unexpected {rc}")
+
+    # AUTO-GENERATED stub for pub_render_path_grid_offline
+    def render_path_grid_offline(self, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count):
+        """Thin wrapper for lib.pub_render_path_grid_offline()"""
+        print("🟥 pub_render_path_grid_offline → render_path_grid_offline — PLEASE COMPLETE IMPLEMENTATION 🟥")
+        if self.context_id is None:
+            raise ValueError("Invalid context_id for render_path_grid_offline")
+
+        rc = lib.pub_render_path_grid_offline(self.context_id, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count)
+        if rc in (0, ERR_SUCCESS):
+            return rc
+        if rc < 0:
+            raise ValueError("render_path_grid_offline failed with code {rc}")
+        raise RuntimeError("render_path_grid_offline returned unexpected {rc}")

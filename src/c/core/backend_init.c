@@ -30,7 +30,7 @@ static pthread_mutex_t g_contexts_lock = PTHREAD_MUTEX_INITIALIZER;
  * get_context_by_id
  * Retrieves the pointer to the context if in range and in use, else returns NULL.
  */
-AntNetContext* get_context_by_id(int context_id)
+AntNetContext* priv_get_context_by_id(int context_id)
 {
     if (context_id < 0 || context_id >= MAX_CONTEXTS)
     {
@@ -52,7 +52,7 @@ AntNetContext* get_context_by_id(int context_id)
  * Creates a new context if there is a free slot, initializes default fields,
  * sets up random/bf/aco states, and returns the context_id on success.
  */
-int antnet_initialize(int node_count, int min_hops, int max_hops)
+int pub_initialize(int node_count, int min_hops, int max_hops)
 {
 #ifndef _WIN32
     pthread_mutex_lock(&g_contexts_lock);
@@ -79,7 +79,7 @@ int antnet_initialize(int node_count, int min_hops, int max_hops)
             ctx->random_best_latency = 0;
             memset(ctx->random_best_nodes, 0, sizeof(ctx->random_best_nodes));
 
-            config_set_defaults(&ctx->config);
+            pub_config_set_defaults(&ctx->config);
             ctx->config.set_nb_nodes = node_count;
             ctx->config.min_hops     = min_hops;
             ctx->config.max_hops     = max_hops;
@@ -99,9 +99,9 @@ int antnet_initialize(int node_count, int min_hops, int max_hops)
 #endif
 
             /* SASA addition: initialize SASA states for ACO, Random, Brute to default */
-            init_sasa_state(&ctx->aco_sasa);
-            init_sasa_state(&ctx->random_sasa);
-            init_sasa_state(&ctx->brute_sasa);
+            priv_init_sasa_state(&ctx->aco_sasa);
+            priv_init_sasa_state(&ctx->random_sasa);
+            priv_init_sasa_state(&ctx->brute_sasa);
 
             /* NEW: default SASA coefficients */
             ctx->sasa_coeffs.alpha = 0.4;
@@ -118,13 +118,13 @@ int antnet_initialize(int node_count, int min_hops, int max_hops)
 }
 
 /*
- * antnet_shutdown
+ * pub_shutdown
  * Frees all allocated memory associated with the context, destroys locks,
  * and marks the slot as unused. Thread-safe with final destruction after unlock.
  */
-int antnet_shutdown(int context_id)
+int pub_shutdown(int context_id)
 {
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;

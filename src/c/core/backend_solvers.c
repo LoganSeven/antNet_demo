@@ -1,8 +1,9 @@
 /* Relative Path: src/c/core/backend_solvers.c */
+
 /*
  * backend_solvers.c
- * Implements solver orchestration functions such as antnet_run_iteration,
- * antnet_run_all_solvers, and retrieval of best path from the random solver.
+ * Implements solver orchestration functions such as pub_run_iteration,
+ * pub_run_all_solvers, and retrieval of best path from the random solver.
  */
 
 #include "../../../include/core/backend_solvers.h"
@@ -16,12 +17,12 @@
 #include <string.h>
 
 /*
- * antnet_run_iteration
+ * pub_run_iteration
  * Increments the iteration counter in a thread-safe manner.
  */
-int antnet_run_iteration(int context_id)
+int pub_run_iteration(int context_id)
 {
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -37,12 +38,12 @@ int antnet_run_iteration(int context_id)
 }
 
 /*
- * antnet_get_best_path
+ * pub_get_best_path
  * Retrieves the current best path from the random solver, or returns a mock path
- * if none found. Thread-safe. (ACO & BF best path can be retrieved separately
- * if needed, or replaced with a param in future.)
+ * if none is available. Thread-safe. Retrieval from ACO and Brute-Force solvers can
+ * be implemented separately or parameterized in the future.
  */
-int antnet_get_best_path(
+int pub_get_best_path(
     int context_id,
     int* out_nodes,
     int max_size,
@@ -54,7 +55,7 @@ int antnet_get_best_path(
     {
         return ERR_INVALID_ARGS;
     }
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -100,11 +101,12 @@ int antnet_get_best_path(
 }
 
 /*
- * antnet_run_all_solvers
- * Runs ACO, Random, and Brute-Force in sequence, each potentially improving its best path,
- * updates SASA states accordingly, and returns the best path found by each in out_* arrays.
+ * pub_run_all_solvers
+ * Executes the ACO, Random, and Brute-Force solvers in sequence.
+ * Each solver may improve its internal best path. SASA states are updated accordingly,
+ * and best paths from each algorithm are returned via the output arrays.
  */
-int antnet_run_all_solvers(
+int pub_run_all_solvers(
     int  context_id,
     int* out_nodes_aco,
     int  max_size_aco,
@@ -127,7 +129,7 @@ int antnet_run_all_solvers(
         return ERR_INVALID_ARGS;
     }
 
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -167,10 +169,9 @@ int antnet_run_all_solvers(
             return rc;
         }
 
-        /* If improved, update SASA for ACO, then recalc the other solvers' scores. */
         if (ctx->aco_best_length > 0 && ctx->aco_best_latency < old_aco_latency)
         {
-            update_on_improvement(
+            priv_update_on_improvement(
                 ctx->iteration,
                 (double)ctx->aco_best_latency,
                 &ctx->aco_sasa,
@@ -179,18 +180,18 @@ int antnet_run_all_solvers(
                 ctx->sasa_coeffs.gamma
             );
 
-            recalc_sasa_score(&ctx->random_sasa, ctx->iteration,
-                              ctx->sasa_coeffs.alpha,
-                              ctx->sasa_coeffs.beta,
-                              ctx->sasa_coeffs.gamma);
-            recalc_sasa_score(&ctx->brute_sasa, ctx->iteration,
-                              ctx->sasa_coeffs.alpha,
-                              ctx->sasa_coeffs.beta,
-                              ctx->sasa_coeffs.gamma);
+            priv_recalc_sasa_score(&ctx->random_sasa, ctx->iteration,
+                                   ctx->sasa_coeffs.alpha,
+                                   ctx->sasa_coeffs.beta,
+                                   ctx->sasa_coeffs.gamma);
+            priv_recalc_sasa_score(&ctx->brute_sasa, ctx->iteration,
+                                   ctx->sasa_coeffs.alpha,
+                                   ctx->sasa_coeffs.beta,
+                                   ctx->sasa_coeffs.gamma);
 
             SasaState states[3] = {ctx->aco_sasa, ctx->random_sasa, ctx->brute_sasa};
             int rank_order[3];
-            compute_ranking(states, 3, rank_order);
+            priv_compute_ranking(states, 3, rank_order);
             printf("[RANK] ACO improved => order: #%d first, #%d second, #%d third\n",
                    rank_order[0], rank_order[1], rank_order[2]);
         }
@@ -214,7 +215,7 @@ int antnet_run_all_solvers(
 
         if (ctx->random_best_length > 0 && ctx->random_best_latency < old_random_latency)
         {
-            update_on_improvement(
+            priv_update_on_improvement(
                 ctx->iteration,
                 (double)ctx->random_best_latency,
                 &ctx->random_sasa,
@@ -223,18 +224,18 @@ int antnet_run_all_solvers(
                 ctx->sasa_coeffs.gamma
             );
 
-            recalc_sasa_score(&ctx->aco_sasa, ctx->iteration,
-                              ctx->sasa_coeffs.alpha,
-                              ctx->sasa_coeffs.beta,
-                              ctx->sasa_coeffs.gamma);
-            recalc_sasa_score(&ctx->brute_sasa, ctx->iteration,
-                              ctx->sasa_coeffs.alpha,
-                              ctx->sasa_coeffs.beta,
-                              ctx->sasa_coeffs.gamma);
+            priv_recalc_sasa_score(&ctx->aco_sasa, ctx->iteration,
+                                   ctx->sasa_coeffs.alpha,
+                                   ctx->sasa_coeffs.beta,
+                                   ctx->sasa_coeffs.gamma);
+            priv_recalc_sasa_score(&ctx->brute_sasa, ctx->iteration,
+                                   ctx->sasa_coeffs.alpha,
+                                   ctx->sasa_coeffs.beta,
+                                   ctx->sasa_coeffs.gamma);
 
             SasaState states[3] = {ctx->aco_sasa, ctx->random_sasa, ctx->brute_sasa};
             int rank_order[3];
-            compute_ranking(states, 3, rank_order);
+            priv_compute_ranking(states, 3, rank_order);
             printf("[RANK] Random improved => order: #%d first, #%d second, #%d third\n",
                    rank_order[0], rank_order[1], rank_order[2]);
         }
@@ -258,7 +259,7 @@ int antnet_run_all_solvers(
 
         if (ctx->brute_best_length > 0 && ctx->brute_best_latency < old_brute_latency)
         {
-            update_on_improvement(
+            priv_update_on_improvement(
                 ctx->iteration,
                 (double)ctx->brute_best_latency,
                 &ctx->brute_sasa,
@@ -267,18 +268,18 @@ int antnet_run_all_solvers(
                 ctx->sasa_coeffs.gamma
             );
 
-            recalc_sasa_score(&ctx->aco_sasa, ctx->iteration,
-                              ctx->sasa_coeffs.alpha,
-                              ctx->sasa_coeffs.beta,
-                              ctx->sasa_coeffs.gamma);
-            recalc_sasa_score(&ctx->random_sasa, ctx->iteration,
-                              ctx->sasa_coeffs.alpha,
-                              ctx->sasa_coeffs.beta,
-                              ctx->sasa_coeffs.gamma);
+            priv_recalc_sasa_score(&ctx->aco_sasa, ctx->iteration,
+                                   ctx->sasa_coeffs.alpha,
+                                   ctx->sasa_coeffs.beta,
+                                   ctx->sasa_coeffs.gamma);
+            priv_recalc_sasa_score(&ctx->random_sasa, ctx->iteration,
+                                   ctx->sasa_coeffs.alpha,
+                                   ctx->sasa_coeffs.beta,
+                                   ctx->sasa_coeffs.gamma);
 
             SasaState states[3] = {ctx->aco_sasa, ctx->random_sasa, ctx->brute_sasa};
             int rank_order[3];
-            compute_ranking(states, 3, rank_order);
+            priv_compute_ranking(states, 3, rank_order);
             printf("[RANK] Brute improved => order: #%d first, #%d second, #%d third\n",
                    rank_order[0], rank_order[1], rank_order[2]);
         }

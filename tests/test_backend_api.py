@@ -195,8 +195,8 @@ def test_multiple_invalid_context_ids():
     """
     Security: API returns error for nonsense context IDs.
     """
-    assert lib.antnet_run_iteration(-9999) < 0
-    assert lib.antnet_shutdown(-9999) < 0
-    assert lib.antnet_run_iteration(9999) < 0
-    assert lib.antnet_shutdown(9999) < 0
+    assert lib.pub_run_iteration(-9999) < 0
+    assert lib.pub_shutdown(-9999) < 0
+    assert lib.pub_run_iteration(9999) < 0
+    assert lib.pub_shutdown(9999) < 0
     _announce("🛡️ SECURITY ✅ multiple_invalid_context_ids")

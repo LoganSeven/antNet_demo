@@ -8,9 +8,16 @@
 #include "../../../include/consts/error_codes.h"
 #include "../../../include/algo/cpu/cpu_brute_force.h"
 
-extern AntNetContext* get_context_by_id(int);
+extern AntNetContext* priv_get_context_by_id(int);
 
-int antnet_update_topology(
+/*
+ * pub_update_topology
+ * Updates the internal graph data within the context.
+ * The function performs validation on the input data, replaces the nodes and edges
+ * in memory, resets the brute-force state, and clears ACO-related data if needed.
+ * Thread-safe through context locking.
+ */
+int pub_update_topology(
     int context_id,
     const NodeData* nodes,
     int num_nodes,
@@ -19,13 +26,13 @@ int antnet_update_topology(
 )
 {
     if (num_nodes < 0 || num_edges < 0 || !nodes || !edges) {
-        printf("[ERROR] antnet_update_topology: Invalid arguments.\n");
+        printf("[ERROR] pub_update_topology: Invalid arguments.\n");
         return ERR_INVALID_ARGS;
     }
 
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx) {
-        printf("[ERROR] antnet_update_topology: Invalid context ID.\n");
+        printf("[ERROR] pub_update_topology: Invalid context ID.\n");
         return ERR_INVALID_CONTEXT;
     }
 
@@ -35,7 +42,7 @@ int antnet_update_topology(
 
     for (int i = 0; i < num_nodes; i++) {
         if (nodes[i].node_id < 0) {
-            printf("[ERROR] antnet_update_topology: Negative node_id found: %d\n", nodes[i].node_id);
+            printf("[ERROR] pub_update_topology: Negative node_id found: %d\n", nodes[i].node_id);
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
@@ -43,7 +50,7 @@ int antnet_update_topology(
         }
 
         if (nodes[i].delay_ms < 0) {
-            printf("[ERROR] antnet_update_topology: Negative latency found for node_id %d\n", nodes[i].node_id);
+            printf("[ERROR] pub_update_topology: Negative latency found for node_id %d\n", nodes[i].node_id);
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
@@ -53,7 +60,7 @@ int antnet_update_topology(
 
     for (int e = 0; e < num_edges; e++) {
         if (edges[e].from_id < 0 || edges[e].to_id < 0) {
-            printf("[ERROR] antnet_update_topology: Negative edge IDs found.\n");
+            printf("[ERROR] pub_update_topology: Negative edge IDs found.\n");
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
@@ -66,7 +73,7 @@ int antnet_update_topology(
     if (num_nodes > 0) {
         ctx->nodes = (NodeData*)malloc(sizeof(NodeData) * (size_t)num_nodes);
         if (!ctx->nodes) {
-            printf("[ERROR] antnet_update_topology: Node memory allocation failed.\n");
+            printf("[ERROR] pub_update_topology: Node memory allocation failed.\n");
 #ifndef _WIN32
             pthread_mutex_unlock(&ctx->lock);
 #endif
@@ -81,7 +88,7 @@ int antnet_update_topology(
     if (num_edges > 0) {
         ctx->edges = (EdgeData*)malloc(sizeof(EdgeData) * (size_t)num_edges);
         if (!ctx->edges) {
-            printf("[ERROR] antnet_update_topology: Edge memory allocation failed.\n");
+            printf("[ERROR] pub_update_topology: Edge memory allocation failed.\n");
             free(ctx->nodes);
             ctx->nodes = NULL;
 #ifndef _WIN32
@@ -94,7 +101,7 @@ int antnet_update_topology(
     }
     ctx->num_edges = num_edges;
 
-    printf("[antnet_update_topology] Updated with %d nodes and %d edges.\n",
+    printf("[pub_update_topology] Updated with %d nodes and %d edges.\n",
            ctx->num_nodes, ctx->num_edges);
 
     /* Force re-init of Brute Force so it picks up new node counts */

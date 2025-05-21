@@ -130,8 +130,8 @@ def main() -> None:
     # Regenerate backend_api.py
     # Appends or refreshes an AUTO-GENERATED block with wrappers for every 
     # antnet_* function found in cdef_string.py that is not already implemented in the base template.
-    #log("🛠️", "Regenerating backend_api.py from CDEF source...")
-    #run("",[PYTHON, "src/python/tools/backend_end_api_builder.py"])
+    log("🛠️", "Regenerating backend_api.py from CDEF source...")
+    run("",[PYTHON, "src/python/tools/backend_end_api_builder.py"])
 
     # Build Python bindings
     log("🧱", "Building Python CFFI module...")

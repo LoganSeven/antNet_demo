@@ -35,13 +35,13 @@ typedef struct edge_data_s EdgeData;
 #endif /* CFFI_BUILD */
 
 /*
- * antnet_update_topology: updates the internal graph data within the context.
+ * pub_update_topology: updates the internal graph data within the context.
  * context_id: context handle (index).
  * nodes: array of NodeData, length num_nodes
  * edges: array of EdgeData, length num_edges
  * Returns 0 on success, negative on error.
  */
-int antnet_update_topology(
+int pub_update_topology(
     int context_id,
     const NodeData* nodes,
     int num_nodes,

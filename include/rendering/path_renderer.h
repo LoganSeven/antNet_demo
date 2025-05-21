@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 /**
- * antnet_render_path_grid
+ * pub_render_path_grid
  *
  * Computes a 90-degree segmented path for the given list of node IDs
  * and writes the resulting float (x,y) coordinates into out_coords.
@@ -20,7 +20,7 @@ extern "C" {
  * Thread-safe usage requires context locking by the caller,
  * or by the function that calls it.
  */
-int antnet_render_path_grid(
+int pub_render_path_grid(
     int context_id,
     const int* node_ids,
     int node_count,
@@ -32,13 +32,13 @@ int antnet_render_path_grid(
 );
 
 /**
- * pr_render_path_grid
+ * priv_render_path_grid
  *
  * Internal rendering function used by antnet_render_path_grid(...).
  * The context must already be locked externally. Do not call this
  * function directly unless you have acquired the necessary lock.
  */
-int pr_render_path_grid(
+int priv_render_path_grid(
     const AntNetContext* ctx,
     const int* node_ids,
     int node_count,

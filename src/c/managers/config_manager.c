@@ -18,10 +18,10 @@ static pthread_mutex_t g_config_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 /*
- * config_set_defaults: sets fixed default values in the cfg structure.
+ * pub_config_set_defaults: sets fixed default values in the cfg structure.
  * This function does not perform any file I/O.
  */
-void config_set_defaults(AppConfig* cfg)
+void pub_config_set_defaults(AppConfig* cfg)
 {
     /* [simulation] defaults */
     cfg->nb_ants       = 3;
@@ -136,12 +136,13 @@ static int config_ini_handler(void* user, const char* section,
 }
 
 /*
- * config_load: loads the .ini file at filepath into *cfg.
+ * pub_config_load
+ * Loads the .ini file at filepath into *cfg.
  * Returns true on success, false on error (file open or parse failure).
  * This function does not discard existing cfg fields if missing from the file.
- * Default values can be set beforehand with config_set_defaults if needed.
+ * Default values can be set beforehand with pub_config_set_defaults if needed.
  */
-bool config_load(AppConfig* cfg, const char* filepath)
+bool pub_config_load(AppConfig* cfg, const char* filepath)
 {
     if (!cfg || !filepath) {
         return false;
@@ -166,11 +167,12 @@ bool config_load(AppConfig* cfg, const char* filepath)
 }
 
 /*
- * config_save: writes fields from *cfg to the .ini file at filepath.
+ * pub_config_save
+ * Writes fields from *cfg to the .ini file at filepath.
  * Returns true on success, false otherwise.
  * Overwrites existing file contents.
  */
-bool config_save(const AppConfig* cfg, const char* filepath)
+bool pub_config_save(const AppConfig* cfg, const char* filepath)
 {
     if (!cfg || !filepath) {
         return false;

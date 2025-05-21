@@ -1,4 +1,5 @@
 /* Relative Path: include/core/backend_solvers.h */
+
 /*
  * backend_solvers.h
  * Internal header for solver orchestration logic in AntNet.
@@ -12,7 +13,7 @@
 extern "C" {
 #endif
 
-#include "backend_init.h" /* ensures get_context_by_id is visible */
+#include "backend_init.h" /* ensures priv_get_context_by_id is visible */
 #include "backend.h"      /* public API definitions */
 
 #ifdef __cplusplus

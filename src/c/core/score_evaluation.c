@@ -9,10 +9,10 @@
 #include <math.h>
 
 /*
- * init_sasa_state
+ * priv_init_sasa_state
  * Initializes the SASA state fields to default values (best_L = +∞).
  */
-void init_sasa_state(SasaState *state)
+void priv_init_sasa_state(SasaState *state)
 {
     if (!state) return;
     state->best_L = DBL_MAX;
@@ -24,11 +24,11 @@ void init_sasa_state(SasaState *state)
 }
 
 /*
- * update_on_improvement
+ * priv_update_on_improvement
  * Called only if new_latency < state->best_L.
  * Applies the incremental SASA formula with the coefficients alpha, beta, gamma.
  */
-void update_on_improvement(
+void priv_update_on_improvement(
     int iter_idx,
     double new_latency,
     SasaState *state,
@@ -78,13 +78,13 @@ void update_on_improvement(
 }
 
 /*
- * NEW: recalc_sasa_score
- * Recomputes the final SASA score in the same manner as update_on_improvement,
+ * NEW: priv_recalc_sasa_score
+ * Recomputes the final SASA score in the same manner as priv_update_on_improvement,
  * but does NOT modify best_L, sum_r, sum_tau, m, or last_improve_iter.
  * This is used after *another* solver's improvement to refresh the iteration-based
  * weighting for solvers that have not improved in this iteration.
  */
-void recalc_sasa_score(
+void priv_recalc_sasa_score(
     SasaState *state,
     int iter_idx,
     double alpha,
@@ -110,11 +110,11 @@ void recalc_sasa_score(
 }
 
 /*
- * compute_ranking
+ * priv_compute_ranking
  * Ranks a set of algorithms by their SASA score in descending order.
  * A simple bubble sort is sufficient for a small number of algorithms.
  */
-void compute_ranking(const SasaState *states, int count, int *rank_out)
+void priv_compute_ranking(const SasaState *states, int count, int *rank_out)
 {
     if (!states || !rank_out || count <= 0) {
         return;

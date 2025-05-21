@@ -14,24 +14,24 @@
 #include <string.h>
 
 /*
- * antnet_init_from_config
- * Loads a config file, then calls antnet_initialize with those parameters.
+ * pub_init_from_config
+ * Loads a config file, then calls pub_initialize with those parameters.
  * On success, the context's config is updated. Thread-safe once context is created.
  */
-int antnet_init_from_config(const char* config_path)
+int pub_init_from_config(const char* config_path)
 {
     if (!config_path)
     {
         return ERR_INVALID_ARGS;
     }
     AppConfig tmpcfg;
-    config_set_defaults(&tmpcfg);
+    pub_config_set_defaults(&tmpcfg);
 
-    if (!config_load(&tmpcfg, config_path))
+    if (!pub_config_load(&tmpcfg, config_path))
     {
         return -1;
     }
-    int context_id = antnet_initialize(
+    int context_id = pub_initialize(
         tmpcfg.set_nb_nodes,
         tmpcfg.min_hops,
         tmpcfg.max_hops
@@ -41,7 +41,7 @@ int antnet_init_from_config(const char* config_path)
         return context_id;
     }
 
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -58,17 +58,17 @@ int antnet_init_from_config(const char* config_path)
 }
 
 /*
- * antnet_get_config
+ * pub_get_config
  * Thread-safe read of the current context config.
  */
-int antnet_get_config(int context_id, AppConfig* out)
+int pub_get_config(int context_id, AppConfig* out)
 {
     if (!out)
     {
         return ERR_INVALID_ARGS;
     }
 
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -86,13 +86,13 @@ int antnet_get_config(int context_id, AppConfig* out)
 }
 
 /*
- * antnet_get_pheromone_matrix
+ * pub_get_pheromone_matrix
  * Copies up to n*n floats into 'out', returns the total count on success,
  * negative on errors. Thread-safe read.
  */
-int antnet_get_pheromone_matrix(int context_id, float* out, int max_count)
+int pub_get_pheromone_matrix(int context_id, float* out, int max_count)
 {
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -126,14 +126,14 @@ int antnet_get_pheromone_matrix(int context_id, float* out, int max_count)
 }
 
 /*
- * antnet_get_algo_ranking
+ * pub_get_algo_ranking
  * Returns the list of algorithms sorted by SASA score in descending order.
  * The caller provides a RankingEntry array with size max_count.
  * The function writes up to 3 entries in 'out' (one per solver).
  * If max_count < 3, returns ERR_ARRAY_TOO_SMALL.
  * On success, returns the number of algorithms (3).
  */
-int antnet_get_algo_ranking(int context_id, RankingEntry* out, int max_count)
+int pub_get_algo_ranking(int context_id, RankingEntry* out, int max_count)
 {
     if (!out)
     {
@@ -144,7 +144,7 @@ int antnet_get_algo_ranking(int context_id, RankingEntry* out, int max_count)
         return ERR_ARRAY_TOO_SMALL;
     }
 
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -160,7 +160,7 @@ int antnet_get_algo_ranking(int context_id, RankingEntry* out, int max_count)
     states[2] = ctx->brute_sasa;
 
     int rank[3];
-    compute_ranking(states, 3, rank);
+    priv_compute_ranking(states, 3, rank);
 
     RankingEntry local[3];
     memset(local, 0, sizeof(local));
@@ -199,12 +199,12 @@ int antnet_get_algo_ranking(int context_id, RankingEntry* out, int max_count)
 }
 
 /*
- * antnet_set_sasa_params
+ * pub_set_sasa_params
  * Updates the SASA coefficients (alpha, beta, gamma) in a thread-safe manner.
  */
-int antnet_set_sasa_params(int context_id, double alpha, double beta, double gamma)
+int pub_set_sasa_params(int context_id, double alpha, double beta, double gamma)
 {
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -224,17 +224,17 @@ int antnet_set_sasa_params(int context_id, double alpha, double beta, double gam
 }
 
 /*
- * antnet_get_sasa_params
+ * pub_get_sasa_params
  * Reads the SASA coefficients (alpha, beta, gamma) in a thread-safe manner.
  */
-int antnet_get_sasa_params(int context_id, double* out_alpha, double* out_beta, double* out_gamma)
+int pub_get_sasa_params(int context_id, double* out_alpha, double* out_beta, double* out_gamma)
 {
     if (!out_alpha || !out_beta || !out_gamma)
     {
         return ERR_INVALID_ARGS;
     }
 
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -254,14 +254,14 @@ int antnet_get_sasa_params(int context_id, double* out_alpha, double* out_beta, 
 }
 
 /*
- * antnet_set_aco_params
+ * pub_set_aco_params
  * Updates ACO parameters (alpha, beta, Q, evaporation, num_ants) in a thread-safe manner.
  * If num_ants <= 0, forces single-ant mode (num_ants=1).
  */
-int antnet_set_aco_params(int context_id, float alpha, float beta, float Q,
+int pub_set_aco_params(int context_id, float alpha, float beta, float Q,
                           float evaporation, int num_ants)
 {
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;
@@ -291,10 +291,10 @@ int antnet_set_aco_params(int context_id, float alpha, float beta, float Q,
 }
 
 /*
- * antnet_get_aco_params
+ * pub_get_aco_params
  * Reads alpha, beta, Q, evaporation, num_ants in a thread-safe manner.
  */
-int antnet_get_aco_params(
+int pub_get_aco_params(
     int context_id,
     float* out_alpha,
     float* out_beta,
@@ -308,7 +308,7 @@ int antnet_get_aco_params(
         return ERR_INVALID_ARGS;
     }
 
-    AntNetContext* ctx = get_context_by_id(context_id);
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
     if (!ctx)
     {
         return ERR_INVALID_CONTEXT;

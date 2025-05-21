@@ -17,7 +17,7 @@ extern "C" {
  * get_context_by_id
  * Retrieves the pointer to the context if in range and in use, else returns NULL.
  */
-AntNetContext* get_context_by_id(int context_id);
+AntNetContext* priv_get_context_by_id(int context_id);
 
 #ifdef __cplusplus
 }
