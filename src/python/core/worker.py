@@ -7,11 +7,12 @@ or from a provided AppConfig dictionary.
 
 import time
 from threading import Event, Lock
+from typing import cast
 from qtpy.QtCore import QObject
 
 from core.callback_adapter import QCCallbackToSignal
 from ffi.backend_api import AntNetWrapper
-from structs._generated.auto_structs import AppConfig
+from structs._generated.auto_structs import AppConfig, NodeData, EdgeData
 
 
 class Worker(QObject):
@@ -33,19 +34,27 @@ class Worker(QObject):
             self.backend = AntNetWrapper(from_config=from_config)
         else:
             if app_config is None:
-                app_config = {
-                    "nb_swarms": 1,
+                app_config = cast(AppConfig, {
+                    "nb_ants": 3,
                     "set_nb_nodes": 64,
                     "min_hops": 5,
                     "max_hops": 32,
-                    "default_delay": 20,
+                    "default_min_delay": 10,
+                    "default_max_delay": 250,
                     "death_delay": 9999,
                     "under_attack_id": -1,
                     "attack_started": False,
                     "simulate_ddos": False,
                     "show_random_performance": True,
-                    "show_brute_performance": True
-                }
+                    "show_brute_performance": True,
+                    "ranking_alpha": 0.4,
+                    "ranking_beta": 0.4,
+                    "ranking_gamma": 0.2,
+                    "ant_alpha": 1.0,
+                    "ant_beta": 2.0,
+                    "ant_Q": 500.0,
+                    "ant_evaporation": 0.1
+                })
             self.backend = AntNetWrapper(app_config=app_config)
 
     def run(self):
@@ -64,7 +73,6 @@ class Worker(QObject):
                 print(f"[ERROR][Worker] run_all_solvers failed: {e}")
                 continue
 
-            # Retrieve pheromones under lock
             with self._ctx_lock:
                 try:
                     pheromones = self.backend.get_pheromone_matrix()
@@ -88,7 +96,7 @@ class Worker(QObject):
             self.backend.shutdown()
             self.backend = None
 
-    def update_topology(self, nodes, edges):
+    def update_topology(self, nodes: list[NodeData], edges: list[EdgeData]):
         """
         Push a new topology into the backend (node list and edge list).
         """

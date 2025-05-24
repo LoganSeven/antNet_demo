@@ -1,5 +1,9 @@
 # src/python/core/callback_adapter.py
+from typing import List
 from qtpy.QtCore import QObject, Signal, Slot
+
+from structs._generated.auto_structs import AntNetPathInfo, RankingEntry
+
 
 class QCCallbackToSignal(QObject):
     """
@@ -7,19 +11,16 @@ class QCCallbackToSignal(QObject):
     Ensures safe, thread-correct communication.
     """
 
-    signal_best_path_updated = Signal(object)  # e.g., path_info dict
+    signal_best_path_updated = Signal(dict)          # AntNetPathInfo (TypedDict emits as dict)
     signal_iteration_done = Signal()
-
-    # Signal to pass the pheromone matrix as a Python list[float]
-    signal_pheromone_matrix = Signal(list)
-    # Signal to pass the ranking of algos
-    signal_ranking_updated  = Signal(list)
+    signal_pheromone_matrix = Signal(list)           # raw list, no generic
+    signal_ranking_updated = Signal(list)            # raw list, for list[RankingEntry]
 
     def __init__(self):
         super().__init__()
 
-    @Slot(object)
-    def on_best_path_callback(self, path_info):
+    @Slot(dict)
+    def on_best_path_callback(self, path_info: AntNetPathInfo):
         """
         Called by backend/worker to notify best path update.
         """
@@ -32,9 +33,8 @@ class QCCallbackToSignal(QObject):
         """
         self.signal_iteration_done.emit()
 
-    # NEW: slot to receive pheromone matrix from the worker
     @Slot(list)
-    def on_pheromone_matrix_callback(self, matrix):
+    def on_pheromone_matrix_callback(self, matrix: List[float]):
         """
         Called by backend/worker to send updated pheromone matrix.
         """

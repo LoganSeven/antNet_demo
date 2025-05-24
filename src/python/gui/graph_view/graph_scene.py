@@ -2,6 +2,8 @@
 GraphScene is responsible for visualizing the network graph (nodes and edges).
 It delegates topology structure to HopMapManager and focuses on Qt-based rendering.
 """
+from typing import List, Optional, Union
+from structs._generated.auto_structs import NodeData, EdgeData
 
 import random
 from qtpy.QtWidgets import (
@@ -35,21 +37,19 @@ class GraphScene(QGraphicsScene):
         super().__init__(parent)
         self.setSceneRect(0, 0, width, height)
 
-        # Match glClearColor(0.02, 0.02, 0.1, 1.0)
         self.setBackgroundBrush(QColor.fromRgbF(0.02, 0.02, 0.1, 1.0))
 
         self.hop_map_manager = HopMapManager()
         self.graph_routing_utils = GraphRoutingUtils(self.hop_map_manager)
 
-        # Caches
         self._node_items_by_id: dict[int, NodeItem] = {}
-        self.best_path_edges:  list[EdgeItem]       = []
-        self.static_edges:     list[EdgeItem]       = []
+        self.best_path_edges: List[EdgeItem] = []
+        self.static_edges: List[EdgeItem] = []
 
-        self._bg_label_items_by_id:  dict[int, tuple] = {}  # start / end
-        self._hop_label_items_by_id: dict[int, tuple] = {}  # hops
+        self._bg_label_items_by_id: dict[int, tuple] = {}
+        self._hop_label_items_by_id: dict[int, tuple] = {}
 
-        self._heatmap_item: QGraphicsPixmapItem | None = None
+        self._heatmap_item: Optional[QGraphicsPixmapItem] = None
         self._gpu_is_ok: bool = False
 
     def set_gpu_ok(self, is_ok: bool):
@@ -115,11 +115,12 @@ class GraphScene(QGraphicsScene):
             self.addItem(edge_item)
             self.static_edges.append(edge_item)
 
-    def export_graph_topology(self):
+    def export_graph_topology(self) -> dict[str, List[NodeData] | List[EdgeData]]:
         """
-        Exports the current node+edge data from the hop_map_manager.
+        Exports the current node+edge data from the HopMapManager.
         """
         return self.hop_map_manager.export_graph_topology()
+
 
     def add_rendered_nodes(self, new_hops: list[dict]):
         """

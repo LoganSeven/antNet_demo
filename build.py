@@ -85,8 +85,20 @@ def main() -> None:
         "src/python/consts/_generated"
     ])
 
-    # reserved step for future struct gen
+    # struct gen
     ensure_dir("src/python/structs/_generated")
+    log("🛠️", "Generating Python structs from C headers...")
+    run("", [
+            PYTHON, "src/python/tools/generate_structs.py",
+            "--headers",
+            "include/types/antnet_network_types.h",
+            "include/types/antnet_config_types.h",
+            "include/types/antnet_path_types.h",
+            "include/types/antnet_brute_force_types.h",
+            "include/types/antnet_aco_v1_types.h",
+            "include/types/antnet_sasa_types.h",
+            "include/types/antnet_ranking_types.h",
+        "--output", "src/python/structs/_generated/auto_structs.py"])
 
     # Preprocess headers for CFFI
     log("📦", "Preprocessing headers for pycparser...")

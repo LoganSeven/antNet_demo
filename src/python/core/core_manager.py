@@ -1,7 +1,14 @@
-# src/python/core/core_manager.py
-
+from typing import TypedDict, List
 from qtpy.QtCore import QObject, QThread
+
 from core.worker import Worker
+from structs._generated.auto_structs import NodeData, EdgeData
+
+
+class TopologyData(TypedDict):
+    nodes: List[NodeData]
+    edges: List[EdgeData]
+
 
 class CoreManager(QObject):
     """
@@ -11,9 +18,9 @@ class CoreManager(QObject):
 
     def __init__(self):
         super().__init__()
-        self.workers = []  # List of (Worker, QThread) pairs
+        self.workers: list[tuple[Worker, QThread]] = []
 
-    def start(self, num_workers=1, from_config: str | None = None):
+    def start(self, num_workers: int = 1, from_config: str | None = None):
         """
         Start the specified number of Worker instances.
         If from_config is provided, workers will load configuration from the given .ini file.
@@ -35,7 +42,7 @@ class CoreManager(QObject):
         for worker, thread in self.workers:
             worker.stop()
 
-        for worker, thread in self.workers:
+        for _, thread in self.workers:
             thread.quit()
             thread.wait()
 
@@ -50,17 +57,12 @@ class CoreManager(QObject):
         """
         return [worker.callback_adapter for worker, _ in self.workers]
 
-    def update_topology(self, topology_data):
+    def update_topology(self, topology_data: TopologyData):
         """
         Broadcasts updated topology to all workers.
-        topology_data is expected to contain:
-        {
-            "nodes": [ { "node_id": int, "delay_ms": int }, ... ],
-            "edges": [ { "from_id": int, "to_id": int }, ... ]
-        }
         """
         nodes = topology_data["nodes"]
         edges = topology_data["edges"]
 
-        for (worker, _) in self.workers:
+        for worker, _ in self.workers:
             worker.update_topology(nodes, edges)

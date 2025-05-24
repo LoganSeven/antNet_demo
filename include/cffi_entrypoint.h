@@ -40,7 +40,6 @@ extern "C" {
 #include "./algo/cpu/cpu_brute_force.h"  // brute_force_search_step
 #include "./algo/cpu/cpu_ACOv1.h"          // aco_v1_...
 #include "./managers/config_manager.h"     // config_load, config_save, ...
-//#include "./managers/hop_map_manager.h"
 
 /* 5) generators , e.g. heatmap_renderer*/
 #include "./rendering/heatmap_renderer.h"

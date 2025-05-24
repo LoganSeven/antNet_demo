@@ -22,6 +22,7 @@ from gui.widgets.aco_visu_widget import AcoVisuWidget
 from gui.managers.signal_manager import SignalManager
 from gui.consts.gui_consts import ALGO_COLORS
 from ffi.backend_api import render_heatmap_rgba, init_async_renderer, shutdown_async_renderer
+from structs._generated.auto_structs import AppConfig
 
 # Import your TabSheetWidget (fit_tabsheet) here:
 from gui.widgets.tab_sheet_widget import TabSheetWidget
@@ -173,7 +174,7 @@ class MainWindow(QMainWindow):
         self.core_manager.start(num_workers=1, from_config="config/settings.ini")
 
         # Retrieve config to see how many nodes and delay range
-        config_data = self.core_manager.workers[0][0].backend.get_config()
+        config_data: AppConfig = self.core_manager.workers[0][0].backend.get_config()
         nb_nodes = config_data["set_nb_nodes"]
         min_delay = config_data["default_min_delay"]
         max_delay = config_data["default_max_delay"]
