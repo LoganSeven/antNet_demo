@@ -42,7 +42,6 @@ extern "C" {
 /* 5) generators , e.g. heatmap_renderer*/
 #include "./rendering/heatmap_renderer.h"
 #include "./rendering/heatmap_renderer_async.h"
-#include "./rendering/path_renderer.h"
 
 #ifdef __cplusplus
 }

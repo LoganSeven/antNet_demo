@@ -1,3 +1,8 @@
 #src/python/gui/consts/algo_consts.py
 
-# This file is intentionally empty, can be used for algorithm constants in the future
+PATH_DIRECTION = {
+    0 :    "up",
+    1 : "right",
+    2 :  "down",
+    3 : "left" 
+}

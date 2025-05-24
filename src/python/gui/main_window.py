@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
 
             if out and len(out) == w * h * 4:
                 self.opengl_ok = True
-                print("[DEBUG] OpenGL heatmap test succeeded.")
+                #print("[DEBUG] OpenGL heatmap test succeeded.")
             else:
                 print("[DEBUG] OpenGL test ran but returned invalid buffer.")
         except Exception as e:
@@ -218,14 +218,15 @@ class MainWindow(QMainWindow):
                 data = path_info[algo_key]
                 nodes = data.get("nodes", [])
                 if nodes:
-                    print(f"[DEBUG] {algo_label} path: {nodes}")
+                    
                     latency = data.get("total_latency", 0)
                     previous_latency = self.last_logged_latencies[algo_key]
                     # Optionally track or log latencies if changed
-                    # if previous_latency is None or previous_latency != latency:
-                    #     self.aco_visu.addLog(f"{algo_label}: {latency}", ALGO_COLORS[algo_key])
-                    #     self.last_logged_latencies[algo_key] = latency
-        self.graph_canvas.scene.draw_multiple_paths(path_info)
+                    if previous_latency is None or previous_latency != latency:
+                        print(f"[DEBUG] {algo_label} best_path: {nodes}")
+                        #self.aco_visu.addLog(f"{algo_label}: {latency}", ALGO_COLORS[algo_key])
+                        self.last_logged_latencies[algo_key] = latency
+                        self.graph_canvas.scene.draw_multiple_paths(path_info)
 
     def on_iteration_done(self):
         self.iteration_count += 1
@@ -275,9 +276,9 @@ class MainWindow(QMainWindow):
         self.core_manager.update_topology(topology_data)
 
     def on_pheromone_matrix(self, matrix: list[float]):
-        print(f"[DEBUG] on_pheromone_matrix called with size={len(matrix)}")
+        #print(f"[DEBUG] on_pheromone_matrix called with size={len(matrix)}")
         self.graph_canvas.scene.update_heatmap(matrix)
 
     def on_ranking_updated(self, ranking: list):
-        print(f"[DEBUG] on_ranking_updated received: {ranking}")
+        #print(f"[DEBUG] on_ranking_updated received: {ranking}")
         self.aco_visu.showRanking(ranking)

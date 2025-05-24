@@ -116,7 +116,7 @@ def generate_heatmap(
         count_drawn += 1
 
     painter.end()
-    print(f"[DEBUG] Squares drawn: {count_drawn}, range=[{vmin:.4f}, {vmax:.4f}]")
+    #print(f"[DEBUG] Squares drawn: {count_drawn}, range=[{vmin:.4f}, {vmax:.4f}]")
     return QPixmap.fromImage(image)
 
 

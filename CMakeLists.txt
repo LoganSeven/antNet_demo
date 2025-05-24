@@ -34,10 +34,12 @@ include_directories(
 # ------------------ Source files ----------------------------------
 set(SOURCE_FILES
     src/c/algo/cpu/cpu_ACOv1.c
+    src/c/algo/cpu/cpu_ACOv1_path_reorder.c
     src/c/algo/cpu/cpu_ACOv1_shared_structs.c
     src/c/algo/cpu/cpu_ACOv1_threaded.c
     src/c/algo/cpu/cpu_brute_force.c
     src/c/algo/cpu/cpu_random_algo.c
+    src/c/algo/cpu/cpu_random_algo_path_reorder.c
     src/c/core/backend.c
     src/c/core/backend_init.c
     src/c/core/backend_params.c
@@ -51,7 +53,6 @@ set(SOURCE_FILES
     src/c/managers/ranking_manager.c
     src/c/rendering/heatmap_renderer.c
     src/c/rendering/heatmap_renderer_async.c
-    src/c/rendering/path_renderer.c
     third_party/ini.c
 )
 

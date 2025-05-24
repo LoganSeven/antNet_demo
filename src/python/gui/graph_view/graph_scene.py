@@ -1,4 +1,3 @@
-# Relative Path: src/python/gui/graph_view/graph_scene.py
 """
 GraphScene is responsible for visualizing the network graph (nodes and edges).
 It delegates topology structure to HopMapManager and focuses on Qt-based rendering.
@@ -19,7 +18,10 @@ from .edge_item import EdgeItem
 from gui.consts.gui_consts import ALGO_COLORS
 from gui.managers.hop_map_manager import HopMapManager
 from gui.graph_view.heatmap_generator import *
-
+# ─────────────────────────────────────────────────────────────────
+# New import for geometry-based routing
+# ─────────────────────────────────────────────────────────────────
+from gui.graph_view.graph_routing import GraphRoutingUtils
 
 class GraphScene(QGraphicsScene):
     """
@@ -37,6 +39,7 @@ class GraphScene(QGraphicsScene):
         self.setBackgroundBrush(QColor.fromRgbF(0.02, 0.02, 0.1, 1.0))
 
         self.hop_map_manager = HopMapManager()
+        self.graph_routing_utils = GraphRoutingUtils(self.hop_map_manager)
 
         # Caches
         self._node_items_by_id: dict[int, NodeItem] = {}
@@ -58,9 +61,10 @@ class GraphScene(QGraphicsScene):
 
     def init_scene_with_nodes(self, total_nodes: int):
         """
-        (Re)initialises HopMapManager with `total_nodes`, then renders nodes.
+        (Re)initialises HopMapManager with total_nodes, then renders nodes.
         """
         self.hop_map_manager.initialize_map(total_nodes)
+        self.graph_routing_utils.refresh_spacing()
         self._render_nodes()
 
     def recalc_node_positions(self, scene_width: float, scene_height: float):
@@ -70,6 +74,7 @@ class GraphScene(QGraphicsScene):
         at the correct resolution.
         """
         self.hop_map_manager.recalc_positions(scene_width, scene_height)
+        self.graph_routing_utils.refresh_spacing()
         self._apply_positions_to_items()
         self._invalidate_heatmap()
 
@@ -408,7 +413,9 @@ class GraphScene(QGraphicsScene):
         """
         Removes old best_path_edges, then draws the new paths.
         Lines are placed **above** node circles for guaranteed visibility.
+        Each path is rendered as direct segments using compute_path().
         """
+
         for e in self.best_path_edges:
             try:
                 self.removeItem(e)
@@ -421,31 +428,41 @@ class GraphScene(QGraphicsScene):
             "random": ALGO_COLORS["random"],
             "brute":  ALGO_COLORS["brute"],
         }
+
+        # 1) Provide small offsets to every algorithm so paths don't overlap.
+        #    Adjust the "aco" offset to avoid a purely zero offset:
         offset_map = {
-            "aco":    (0,   0),
-            "random": (6,  -6),
-            "brute":  (-6,  6),
+            "aco":    (2, 2),  
+            "random": (8, -8),
+            "brute":  (-4, 6),
         }
 
         for algo, info in path_dict.items():
+
             node_ids = info.get("nodes", [])
             if not node_ids:
                 continue
 
-            ox, oy   = offset_map.get(algo, (0, 0))
-            p_color  = color_map.get(algo, "#ffffff")
+            ox, oy = offset_map.get(algo, (0, 0))
+            p_color = color_map.get(algo, "#ffffff")
 
-            seq = [
-                self._node_items_by_id.get(nid)
+            # Resolve node data from IDs
+            path = [
+                self._node_items_by_id[nid].__dict__
                 for nid in node_ids
-                if self._node_items_by_id.get(nid)
+                if nid in self._node_items_by_id
             ]
-            for a, b in zip(seq, seq[1:]):
+            if len(path) < 2:
+                continue
+
+            # Compute segments with offset
+            segments = self.graph_routing_utils.compute_path(path, offset=(ox, oy))
+
+            # Render segments
+            
+            for (sx, sy, ex, ey) in segments:
                 edge = EdgeItem(
-                    a.x + ox,
-                    a.y + oy,
-                    b.x + ox,
-                    b.y + oy,
+                    sx, sy, ex, ey,
                     color=p_color,
                     pen_width=3,
                     from_node=None,

@@ -126,7 +126,7 @@ int brute_force_search_step(
                 ctx->brute_best_length = path_length;
                 ctx->brute_best_latency = latency_sum;
                 memcpy(ctx->brute_best_nodes, temp_path, sizeof(int) * path_length);
-                printf("[DEBUG][BF] 🎯 New best path! Latency improved: %d\n", latency_sum);
+                //printf("[DEBUG][BF] 🎯 New best path! Latency improved: %d\n", latency_sum);
             }
 
             goto COPY_BEST_AND_EXIT; // TEST ONE PATH PER CALL!
@@ -145,10 +145,10 @@ COPY_BEST_AND_EXIT:
     *out_path_len = ctx->brute_best_length;
     *out_total_latency = ctx->brute_best_latency;
 
-    printf("[DEBUG][BF] ✅ Best path returned: latency=%d, path=[", ctx->brute_best_latency);
-    for (int i = 0; i < ctx->brute_best_length; i++)
-        printf("%d%s", ctx->brute_best_nodes[i], i < ctx->brute_best_length - 1 ? ", " : "");
-    printf("]\n");
+    //printf("[DEBUG][BF] ✅ Best path returned: latency=%d, path=[", ctx->brute_best_latency);
+    //for (int i = 0; i < ctx->brute_best_length; i++)
+    //    printf("%d%s", ctx->brute_best_nodes[i], i < ctx->brute_best_length - 1 ? ", " : "");
+    //printf("]\n");
 
     return ERR_SUCCESS;
 }

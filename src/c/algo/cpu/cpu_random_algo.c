@@ -1,13 +1,4 @@
 /* Relative Path: src/c/algo/cpu/cpu_random_algo.c */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <limits.h>
-#include "../../../../include/consts/error_codes.h"
-#include "../../../../include/algo/cpu/cpu_random_algo.h"
-#include "../../../../include/core/backend.h"
-
 /*
  * random_search_path: main function
  * - picks a random count in [ctx->min_hops..ctx->max_hops]
@@ -22,6 +13,16 @@
  *   This function does NOT acquire ctx->lock.
  *   The caller must lock ctx before calling (e.g. from bridging or top-level API).
  */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <limits.h>
+#include "../../../../include/consts/error_codes.h"
+#include "../../../../include/algo/cpu/cpu_random_algo.h"
+#include "../../../../include/core/backend.h"
+/* Added header to reorder path for display */
+#include "../../../../include/algo/cpu/cpu_random_algo_path_reorder.h"
 
 /* security: track if we have seeded the RNG once to avoid repeated seeding on each call */
 static int g_seeded = 0;
@@ -49,7 +50,7 @@ int random_search_path(
         return ERR_ARRAY_TOO_SMALL;
     }
 
-    /* security: only seed once per process run to prevent repeated seeds in quick succession */
+    /* seed once per process run */
     if (!g_seeded) {
         srand((unsigned int)time(NULL));
         g_seeded = 1;
@@ -60,25 +61,17 @@ int random_search_path(
         return ERR_INVALID_ARGS;
     }
 
-    /*
-     * security/hardening: pick nb_selected_nodes from the valid range,
-     * then clamp to candidate_count so we do not exceed feasible picks.
-     */
+    /* pick nb_selected_nodes in [min_hops..max_hops], clamp by candidate_count */
     int nb_selected_nodes = ctx->min_hops + (rand() % range_size);
-    int candidate_count = ctx->num_nodes - 2; /* exclude start_id and end_id from picks */
+    int candidate_count = ctx->num_nodes - 2; /* exclude start_id and end_id */
 
-    /* clamp if candidate_count < nb_selected_nodes */
     if (candidate_count < 0) {
         return ERR_NO_PATH_FOUND; /* no valid nodes besides start/end */
     }
     if (nb_selected_nodes > candidate_count) {
-        nb_selected_nodes = candidate_count; /* clamp for consistent behavior in tests */
+        nb_selected_nodes = candidate_count;
     }
 
-    /*
-     * At this point, nb_selected_nodes <= candidate_count,
-     * so a path with that many intermediates is always feasible.
-     */
     int* candidates = (int*)malloc((size_t)candidate_count * sizeof(int));
     if (!candidates) {
         return ERR_MEMORY_ALLOCATION;
@@ -122,18 +115,15 @@ int random_search_path(
             free(new_path);
             return ERR_NO_PATH_FOUND;
         }
-        /* security: check for integer overflow in summation */
         if (ctx->nodes[node_id].delay_ms > INT_MAX - new_total_latency) {
-            /* security: overflow potential */
             free(new_path);
-            return ERR_INVALID_ARGS; 
+            return ERR_INVALID_ARGS;
         }
         new_total_latency += ctx->nodes[node_id].delay_ms;
     }
 
     /*
-     * if it is better or if no best path is stored yet, update ctx->random_best_*
-     * The default for random_best_length is 0 => no path set yet
+     * if better or if none yet, update ctx->random_best_*
      */
     if (ctx->random_best_length == 0 || new_total_latency < ctx->random_best_latency) {
         ctx->random_best_length = new_path_length;
@@ -145,13 +135,22 @@ int random_search_path(
 
     free(new_path);
 
-    /* Copy the best path so far to out_* fields */
+    /* 
+     * Now copy the best path so far to out_* fields
+     * but reorder it for display: sorts the subarray [1..end-1].
+     */
     if (ctx->random_best_length > max_size) {
         return ERR_ARRAY_TOO_SMALL;
     }
+
+    /* copy best path into out_nodes */
     for (int p = 0; p < ctx->random_best_length; p++) {
         out_nodes[p] = ctx->random_best_nodes[p];
     }
+
+    /* reorder for display (purely cosmetic, does not change stored best) */
+    random_algo_reorder_path_for_display(out_nodes, ctx->random_best_length);
+
     *out_path_len = ctx->random_best_length;
     *out_total_latency = ctx->random_best_latency;
 

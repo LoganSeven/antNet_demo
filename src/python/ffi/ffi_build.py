@@ -15,10 +15,12 @@ ffi.set_source(
     "backend_cffi",
     f"""#include "core/backend.h"
 #include "algo/cpu/cpu_ACOv1.h"
+#include "algo/cpu/cpu_ACOv1_path_reorder.h"
 #include "algo/cpu/cpu_ACOv1_shared_structs.h"
 #include "algo/cpu/cpu_ACOv1_threaded.h"
 #include "algo/cpu/cpu_brute_force.h"
 #include "algo/cpu/cpu_random_algo.h"
+#include "algo/cpu/cpu_random_algo_path_reorder.h"
 #include "cffi_entrypoint.h"
 #include "consts/error_codes.h"
 #include "core/backend_init.h"
@@ -34,7 +36,6 @@ ffi.set_source(
 #include "managers/ranking_manager.h"
 #include "rendering/heatmap_renderer.h"
 #include "rendering/heatmap_renderer_async.h"
-#include "rendering/path_renderer.h"
 #include "types/antnet_aco_v1_params.h"
 #include "types/antnet_aco_v1_types.h"
 #include "types/antnet_brute_force_types.h"
@@ -58,10 +59,11 @@ ffi.set_source(
         os.path.join(src_c_dir, "core/backend_solvers.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer_async.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer.c"),
-        os.path.join(src_c_dir, "rendering/path_renderer.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1_shared_structs.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_brute_force.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1_threaded.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_random_algo_path_reorder.c"),
+        os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1_path_reorder.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_random_algo.c"),
         ini_c

@@ -53,7 +53,7 @@ class Worker(QObject):
         Main loop for backend processing. Waits until topology is ready.
         """
         while not self._stop_event.is_set():
-            time.sleep(0.01)
+            time.sleep(0.15)
 
             if not self._topology_ready:
                 continue  # Wait until topology is updated

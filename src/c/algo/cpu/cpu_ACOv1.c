@@ -48,6 +48,8 @@
 #include "../../../../include/algo/cpu/cpu_ACOv1_threaded.h"
 #include "../../../../include/types/antnet_aco_v1_types.h"
 #include "../../../../include/core/backend.h"
+/* Added header for path reordering */
+#include "../../../../include/algo/cpu/cpu_ACOv1_path_reorder.h"
 
 /* Single-process RNG seeding guard, similar to random_algo.c */
 static int g_aco_seeded = 0;
@@ -65,16 +67,16 @@ static int aco_v1_run_iteration_single(AntNetContext* ctx);
 int aco_v1_init(AntNetContext* ctx)
 {
     if (!ctx) {
-        printf("[DEBUG][ACO] aco_v1_init: ctx is NULL\n");
+        //printf("[DEBUG][ACO] aco_v1_init: ctx is NULL\n");
         return ERR_INVALID_ARGS;
     }
     if (ctx->num_nodes <= 0) {
-        printf("[DEBUG][ACO] aco_v1_init: No topology or zero nodes\n");
+        //printf("[DEBUG][ACO] aco_v1_init: No topology or zero nodes\n");
         return ERR_NO_TOPOLOGY;
     }
 
     if (ctx->aco_v1.is_initialized) {
-        printf("[DEBUG][ACO] aco_v1_init: Re-initializing; freeing old data...\n");
+        //printf("[DEBUG][ACO] aco_v1_init: Re-initializing; freeing old data...\n");
         if (ctx->aco_v1.adjacency) {
             free(ctx->aco_v1.adjacency);
             ctx->aco_v1.adjacency = NULL;
@@ -94,13 +96,13 @@ int aco_v1_init(AntNetContext* ctx)
 
     ctx->aco_v1.adjacency = (int*)calloc(matrix_count, sizeof(int));
     if (!ctx->aco_v1.adjacency) {
-        printf("[DEBUG][ACO] aco_v1_init: adjacency allocation failed\n");
+        //printf("[DEBUG][ACO] aco_v1_init: adjacency allocation failed\n");
         return ERR_MEMORY_ALLOCATION;
     }
 
     ctx->aco_v1.pheromones = (float*)calloc(matrix_count, sizeof(float));
     if (!ctx->aco_v1.pheromones) {
-        printf("[DEBUG][ACO] aco_v1_init: pheromones allocation failed\n");
+        //printf("[DEBUG][ACO] aco_v1_init: pheromones allocation failed\n");
         free(ctx->aco_v1.adjacency);
         ctx->aco_v1.adjacency = NULL;
         return ERR_MEMORY_ALLOCATION;
@@ -145,8 +147,8 @@ int aco_v1_init(AntNetContext* ctx)
     ctx->aco_best_length  = 0;
     ctx->aco_best_latency = 0;
 
-    printf("[ACO] aco_v1_init done: node_count=%d, edges=%d\n",
-           ctx->num_nodes, ctx->num_edges);
+    //printf("[ACO] aco_v1_init done: node_count=%d, edges=%d\n",
+    //       ctx->num_nodes, ctx->num_edges);
     return ERR_SUCCESS;
 }
 
@@ -158,7 +160,7 @@ int aco_v1_init(AntNetContext* ctx)
 int aco_v1_run_iteration(AntNetContext* ctx)
 {
     if (!ctx) {
-        printf("[DEBUG][ACO] aco_v1_run_iteration: ctx=NULL\n");
+        //printf("[DEBUG][ACO] aco_v1_run_iteration: ctx=NULL\n");
         return ERR_INVALID_ARGS;
     }
     if (!ctx->aco_v1.is_initialized) {
@@ -189,12 +191,12 @@ static int aco_v1_run_iteration_single(AntNetContext* ctx)
     /* min_hops..max_hops logic, same as random. */
     int range_size = ctx->max_hops - ctx->min_hops + 1;
     if (range_size <= 0) {
-        printf("[DEBUG][ACO] aco_v1_run_iteration_single: invalid hop range\n");
+        //printf("[DEBUG][ACO] aco_v1_run_iteration_single: invalid hop range\n");
         return ERR_INVALID_ARGS;
     }
     int candidate_count = ctx->num_nodes - 2; /* exclude node 0 & 1 from the subset */
     if (candidate_count < 0) {
-        printf("[DEBUG][ACO] aco_v1_run_iteration_single: not enough nodes besides [0,1].\n");
+        //printf("[DEBUG][ACO] aco_v1_run_iteration_single: not enough nodes besides [0,1].\n");
         return ERR_NO_PATH_FOUND;
     }
 
@@ -342,7 +344,7 @@ static int aco_v1_run_iteration_single(AntNetContext* ctx)
         }
     }
 
-    printf("[DEBUG][ACO] Reinforced %d-hop path, cost=%d\n", new_path_length - 2, cost_sum);
+    //printf("[DEBUG][ACO] Reinforced %d-hop path, cost=%d\n", new_path_length - 2, cost_sum);
 
     free(new_path);
 
@@ -351,6 +353,8 @@ static int aco_v1_run_iteration_single(AntNetContext* ctx)
 
 /*
  * aco_v1_get_best_path: same as typical; copies best to out_* fields.
+ * Now calls aco_v1_reorder_path_for_display to reorder the intermediate nodes
+ * between [0..1] prior to returning, purely for external/visual usage.
  */
 int aco_v1_get_best_path(
     AntNetContext* ctx,
@@ -369,9 +373,14 @@ int aco_v1_get_best_path(
     if (ctx->aco_best_length > max_size) {
         return ERR_ARRAY_TOO_SMALL;
     }
+
     memcpy(out_nodes, ctx->aco_best_nodes, ctx->aco_best_length * sizeof(int));
     *out_path_len = ctx->aco_best_length;
     *out_total_latency = ctx->aco_best_latency;
+
+    /* Reorder only for display, does not modify the stored best path in ctx->aco_best_nodes. */
+    aco_v1_reorder_path_for_display(out_nodes, *out_path_len);
+
     return ERR_SUCCESS;
 }
 
@@ -396,4 +405,3 @@ int aco_v1_search_path(
     int rc = aco_v1_get_best_path(ctx, out_nodes, max_size, out_path_len, out_total_latency);
     return rc;
 }
-

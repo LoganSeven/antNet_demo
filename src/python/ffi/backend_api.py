@@ -505,30 +505,3 @@ def render_heatmap_rgba(
             raise ValueError("get_sasa_params failed with code {rc}")
         raise RuntimeError("get_sasa_params returned unexpected {rc}")
 
-    # AUTO-GENERATED stub for pub_render_path_grid
-    def render_path_grid(self, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count):
-        """Thin wrapper for lib.pub_render_path_grid()"""
-        print("🟥 pub_render_path_grid → render_path_grid — PLEASE COMPLETE IMPLEMENTATION 🟥")
-        if self.context_id is None:
-            raise ValueError("Invalid context_id for render_path_grid")
-
-        rc = lib.pub_render_path_grid(self.context_id, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count)
-        if rc in (0, ERR_SUCCESS):
-            return rc
-        if rc < 0:
-            raise ValueError("render_path_grid failed with code {rc}")
-        raise RuntimeError("render_path_grid returned unexpected {rc}")
-
-    # AUTO-GENERATED stub for pub_render_path_grid_offline
-    def render_path_grid_offline(self, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count):
-        """Thin wrapper for lib.pub_render_path_grid_offline()"""
-        print("🟥 pub_render_path_grid_offline → render_path_grid_offline — PLEASE COMPLETE IMPLEMENTATION 🟥")
-        if self.context_id is None:
-            raise ValueError("Invalid context_id for render_path_grid_offline")
-
-        rc = lib.pub_render_path_grid_offline(self.context_id, node_ids, node_count, offset_x, offset_y, out_coords, max_coords, out_count)
-        if rc in (0, ERR_SUCCESS):
-            return rc
-        if rc < 0:
-            raise ValueError("render_path_grid_offline failed with code {rc}")
-        raise RuntimeError("render_path_grid_offline returned unexpected {rc}")

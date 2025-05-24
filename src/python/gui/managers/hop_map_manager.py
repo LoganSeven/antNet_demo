@@ -51,6 +51,11 @@ class HopMapManager:
         self._default_min_delay = 10
         self._default_max_delay = 50
 
+        self._grid_row_count = None
+        self._grid_col_count = None
+        self._grid_row_spacing = None
+        self._grid_col_spacing = None
+
     def set_delay_range(self, min_delay: int, max_delay: int):
         """
         Adjusts the random latency range for newly created or re-initialized nodes.
@@ -134,12 +139,16 @@ class HopMapManager:
 
             row_count = int(math.ceil(math.sqrt(hop_count)))
             col_count = int(math.ceil(hop_count / row_count))
+            self._grid_row_count = row_count 
+            self._grid_col_count = col_count
 
             w = max(1.0, grid_right - grid_left)
             h = max(1.0, height - 2.0 * margin)
 
             cell_width = w / col_count
             cell_height = h / row_count
+            self._grid_row_spacing = cell_height
+            self._grid_col_spacing = cell_width
 
             for i in range(hop_count):
                 node_id = i + 2
@@ -353,3 +362,16 @@ class HopMapManager:
             self._last_node_id = new_id
 
         return new_hops
+
+    def get_grid_row_count(self) -> int:
+        return self._grid_row_count
+
+    def get_grid_col_count(self) -> int:
+        return self._grid_row_count-1
+
+    def get_grid_row_spacing(self) -> float:
+        return self._grid_row_spacing
+
+    def get_grid_col_spacing(self) -> float:
+        return self._grid_col_spacing
+
