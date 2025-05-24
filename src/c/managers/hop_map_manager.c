@@ -5,9 +5,7 @@
 #include <math.h>
 #include <time.h>
 
-#include "../../../include/core/backend.h"
-#include "../../../include/core/backend_topology.h"
-#include "../../../include/consts/error_codes.h"
+
 #include "../../../include/managers/hop_map_manager.h"
 
 /*

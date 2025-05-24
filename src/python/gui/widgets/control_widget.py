@@ -55,7 +55,7 @@ class ControlWidget(QWidget):
         button_reset_delay    = FitWidthButton("Reset nodes delay")
         button_reset_topology = FitWidthButton("Reset topology")
 
-        btn_validate_swarms        = FitWidthButton("Validate")
+        btn_validate_ants          = FitWidthButton("Validate")
         btn_validate_nodes         = FitWidthButton("Validate")
         btn_validate_min_hops      = FitWidthButton("Validate")
         btn_validate_max_hops      = FitWidthButton("Validate")
@@ -63,7 +63,7 @@ class ControlWidget(QWidget):
         btn_validate_death_delay   = FitWidthButton("Validate")
 
         # --- Labels ---
-        label_swarms        = FitWidthLabel("nb swarms:")
+        label_ants        = FitWidthLabel  ("nb ants:")
         label_set_nodes     = FitWidthLabel("set nb nodes:")
         label_min_hops      = FitWidthLabel("min hops:")
         label_max_hops      = FitWidthLabel("max hops:")
@@ -72,7 +72,7 @@ class ControlWidget(QWidget):
         label_node_attack   = FitWidthLabel("node under attack:")
 
         # --- Spin boxes (FitWidthSpinBox) ---
-        spin_swarms        = FitWidthSpinBox()
+        spin_ants        = FitWidthSpinBox()
         spin_set_nodes     = FitWidthSpinBox()
         spin_min_hops      = FitWidthSpinBox()
         spin_max_hops      = FitWidthSpinBox()
@@ -86,7 +86,7 @@ class ControlWidget(QWidget):
         checkbox_brute_perf    = FitWidthCheckBox("Show brute force")
 
         # --- Ranges ---
-        spin_swarms.setRange(1, 50)
+        spin_ants.setRange(1, 50)
         spin_set_nodes.setRange(2, 1024)
         spin_min_hops.setRange(4, 512)
         spin_max_hops.setRange(5, 1024)
@@ -96,7 +96,7 @@ class ControlWidget(QWidget):
 
         # --- Manager registration for labels ---
         for label, col in [
-            (label_swarms, 1), (label_set_nodes, 3), (label_min_hops, 1),
+            (label_ants, 1), (label_set_nodes, 3), (label_min_hops, 1),
             (label_max_hops, 3), (label_default_delay, 1),
             (label_death_delay, 3), (label_node_attack, 1)
         ]:
@@ -106,14 +106,14 @@ class ControlWidget(QWidget):
         for btn in [
             button_add_10, button_add_100, button_del_10,
             button_reset_delay, button_reset_topology,
-            btn_validate_swarms, btn_validate_nodes, btn_validate_min_hops,
+            btn_validate_ants, btn_validate_nodes, btn_validate_min_hops,
             btn_validate_max_hops, btn_set_default_delay, btn_validate_death_delay
         ]:
             self.button_manager.register_button(btn, 0)
 
         # --- Manager registration for spin boxes ---
         # Register each spinbox in the same column where it appears
-        self.spinbox_manager.register_spinbox(spin_swarms,        1)
+        self.spinbox_manager.register_spinbox(spin_ants,        1)
         self.spinbox_manager.register_spinbox(spin_set_nodes,     3)
         self.spinbox_manager.register_spinbox(spin_min_hops,      1)
         self.spinbox_manager.register_spinbox(spin_max_hops,      3)
@@ -130,9 +130,9 @@ class ControlWidget(QWidget):
         # --- Layout arrangement ---
         # row=0
         self._layout.addWidget(button_add_10, 0, 0)
-        self._layout.addWidget(label_swarms, 0, 1)
-        self._layout.addWidget(spin_swarms, 1, 1)
-        self._layout.addWidget(btn_validate_swarms, 1, 2)
+        self._layout.addWidget(label_ants, 0, 1)
+        self._layout.addWidget(spin_ants, 1, 1)
+        self._layout.addWidget(btn_validate_ants, 1, 2)
 
         self._layout.addWidget(label_set_nodes, 0, 3)
         self._layout.addWidget(spin_set_nodes, 1, 3)

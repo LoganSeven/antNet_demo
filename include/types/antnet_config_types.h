@@ -15,7 +15,7 @@ extern "C" {
 typedef struct AppConfig
 {
     /* [simulation] */
-    int nb_ants;         /* renamed from nb_swarms */
+    int nb_ants;         
     int set_nb_nodes;
     int min_hops;
     int max_hops;
