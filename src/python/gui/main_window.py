@@ -1,4 +1,3 @@
-# Relative Path: src/python/gui/main_window.py
 """
 MainWindow sets up the GUI layout, starts the CoreManager (which spins up the Workers),
 and connects signals for solver results to be drawn in the GraphScene.
@@ -24,6 +23,8 @@ from gui.managers.signal_manager import SignalManager
 from gui.consts.gui_consts import ALGO_COLORS
 from ffi.backend_api import render_heatmap_rgba, init_async_renderer, shutdown_async_renderer
 
+# Import your TabSheetWidget (fit_tabsheet) here:
+from gui.widgets.tab_sheet_widget import TabSheetWidget
 
 class MainWindow(QMainWindow):
     splitter_horizontal_released = Signal()
@@ -55,18 +56,13 @@ class MainWindow(QMainWindow):
         # Attempt a small test for the renderer
         self.opengl_ok = False
         try:
-            # 10 fixed (x, y) points and strength values
             pts_xy = [-0.8, -0.8, -0.5, -0.5, -0.2, -0.2, 0.0, 0.0, 0.2, 0.2,
                       0.4, 0.4, 0.6, 0.6, 0.8, 0.8, -0.6, 0.6, 0.6, -0.6]
             strength = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
             w, h = 50, 50
             out = render_heatmap_rgba(pts_xy, strength, w, h)
-
             if out and len(out) == w * h * 4:
                 self.opengl_ok = True
-                #print("[DEBUG] OpenGL heatmap test succeeded.")
-            else:
-                print("[DEBUG] OpenGL test ran but returned invalid buffer.")
         except Exception as e:
             print(f"[DEBUG] OpenGL heatmap test failed: {e}")
 
@@ -137,31 +133,46 @@ class MainWindow(QMainWindow):
         zone2_layout.addWidget(self.aco_visu)
 
         self.button_stop = QPushButton("Stop All Workers", self.zone2)
-        self.button_stop.clicked.connect(self.core_manager.stop)
         zone2_layout.addWidget(self.button_stop)
 
-        # Zone 3: Control panel
+        # Zone 3: Control panel area
         zone3_layout = QVBoxLayout(self.zone3)
         zone3_layout.setContentsMargins(8, 8, 8, 8)
         zone3_layout.setSpacing(4)
 
+        # ------------------------------------------------------------
+        # Keep ControlWidget creation, but do NOT add it to layout,
+        # hide it, and mark TODO remove after refactoring
+        # ------------------------------------------------------------
         self.control = ControlWidget(self.zone3)
         self.control.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        zone3_layout.addWidget(self.control)
+        self.control.setVisible(False)  # hidden
+        # TODO remove after refactoring
+        # zone3_layout.addWidget(self.control)  # commented out intentionally
+
+        # ------------------------------------------------------------
+        # Create a new fit_tabsheet with 3 tabs: Topology, ACO parameters, Ranking parameters
+        # ------------------------------------------------------------
+        self.tab_sheet = TabSheetWidget(self.zone3)
+        self.tab_sheet.add_tabsheet("Topology")
+        self.tab_sheet.add_tabsheet("ACO parameters")
+        self.tab_sheet.add_tabsheet("Ranking parameters")
+
+        zone3_layout.addWidget(self.tab_sheet)
         zone3_layout.setStretch(0, 1)
 
+        # Example button placed after the tab sheet
         self.button_update_topology = QPushButton("Update Topology", self.zone3)
-        self.button_update_topology.clicked.connect(self.on_button_update_topology)
         zone3_layout.addWidget(self.button_update_topology)
 
         self.signal_manager = SignalManager(self, self.control, self.core_manager)
 
         self.graph_canvas.scene.set_gpu_ok(self.opengl_ok)
 
-        # Now start the workers (which create contexts in the C backend) from .ini config
+        # Now start the workers from .ini config
         self.core_manager.start(num_workers=1, from_config="config/settings.ini")
 
-        # Retrieve the backend config to see how many nodes and delay range are configured
+        # Retrieve config to see how many nodes and delay range
         config_data = self.core_manager.workers[0][0].backend.get_config()
         nb_nodes = config_data["set_nb_nodes"]
         min_delay = config_data["default_min_delay"]
@@ -172,11 +183,7 @@ class MainWindow(QMainWindow):
 
         # Initialize the scene with the configured number of nodes
         self.graph_canvas.scene.init_scene_with_nodes(nb_nodes)
-
-        # Create a default chain of edges
         self.graph_canvas.scene.create_default_edges()
-
-        # Render manager edges and push full topology to backend
         self.graph_canvas.scene.render_manager_edges()
 
         # Auto-inject topology once everything is ready
@@ -218,13 +225,10 @@ class MainWindow(QMainWindow):
                 data = path_info[algo_key]
                 nodes = data.get("nodes", [])
                 if nodes:
-                    
                     latency = data.get("total_latency", 0)
                     previous_latency = self.last_logged_latencies[algo_key]
-                    # Optionally track or log latencies if changed
                     if previous_latency is None or previous_latency != latency:
                         print(f"[DEBUG] {algo_label} best_path: {nodes}")
-                        #self.aco_visu.addLog(f"{algo_label}: {latency}", ALGO_COLORS[algo_key])
                         self.last_logged_latencies[algo_key] = latency
                         self.graph_canvas.scene.draw_multiple_paths(path_info)
 
@@ -268,17 +272,12 @@ class MainWindow(QMainWindow):
         super().mouseReleaseEvent(event)
 
     def on_button_update_topology(self):
-        # Gather the current topology from the scene
         topology_data = self.graph_canvas.scene.export_graph_topology()
-
-        # In real usage, we must push the topology to the worker so that it knows the new node/edge data.
         print("[DEBUG] on_button_update_topology called; sending to CoreManager...")
         self.core_manager.update_topology(topology_data)
 
     def on_pheromone_matrix(self, matrix: list[float]):
-        #print(f"[DEBUG] on_pheromone_matrix called with size={len(matrix)}")
         self.graph_canvas.scene.update_heatmap(matrix)
 
     def on_ranking_updated(self, ranking: list):
-        #print(f"[DEBUG] on_ranking_updated received: {ranking}")
         self.aco_visu.showRanking(ranking)

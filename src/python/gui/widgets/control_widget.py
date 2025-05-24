@@ -82,8 +82,8 @@ class ControlWidget(QWidget):
 
         # --- Checkboxes (FitWidthCheckBox) ---
         checkbox_simulate_ddos = FitWidthCheckBox("Simulate DDOS")
-        checkbox_random_perf   = FitWidthCheckBox("Show random performance")
-        checkbox_brute_perf    = FitWidthCheckBox("Show brute force performance")
+        checkbox_random_perf   = FitWidthCheckBox("Show random")
+        checkbox_brute_perf    = FitWidthCheckBox("Show brute force")
 
         # --- Ranges ---
         spin_swarms.setRange(1, 50)
@@ -172,8 +172,8 @@ class ControlWidget(QWidget):
         self._layout.addWidget(checkbox_simulate_ddos, 7, 2, 1, 2)
 
         # row=9
-        self._layout.addWidget(checkbox_random_perf, 9, 0, 1, 2)
-        self._layout.addWidget(checkbox_brute_perf, 9, 2, 1, 3)
+        self._layout.addWidget(checkbox_random_perf, 9, 0, 1, 1)
+        self._layout.addWidget(checkbox_brute_perf, 9, 2, 1, 1)
 
         # Column stretching
         self._layout.setColumnStretch(0, 1)

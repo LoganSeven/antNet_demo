@@ -75,18 +75,10 @@ typedef struct {
     char __size[4];
 } pthread_barrierattr_t;
 typedef struct {
-    int *adjacency;
-    int adjacency_size;
-    float *pheromones;
-    int pheromone_size;
-    float alpha;
-    float beta;
-    float evaporation;
-    float Q;
-    int num_ants;
-    int is_initialized;
-} AcoV1State;
-typedef struct HeatmapRenderer HeatmapRenderer;
+    double alpha;
+    double beta;
+    double gamma;
+} SasaCoeffs;
 typedef struct {
     double best_L;
     int last_improve_iter;
@@ -101,10 +93,18 @@ typedef struct {
     int latency_ms;
 } RankingEntry;
 typedef struct {
-    double alpha;
-    double beta;
-    double gamma;
-} SasaCoeffs;
+    int *adjacency;
+    int adjacency_size;
+    float *pheromones;
+    int pheromone_size;
+    float alpha;
+    float beta;
+    float evaporation;
+    float Q;
+    int num_ants;
+    int is_initialized;
+} AcoV1State;
+typedef struct HeatmapRenderer HeatmapRenderer;
 typedef struct {
     int node_count;
     int min_hops;
@@ -132,17 +132,6 @@ typedef struct {
     SasaState brute_sasa;
     SasaCoeffs sasa_coeffs;
 } AntNetContext;
-typedef struct {
-    pthread_mutex_t lock;
-    NodeData *start_node;
-    NodeData *end_node;
-    NodeData *hop_nodes;
-    size_t hop_count;
-    EdgeData *edges;
-    size_t edge_count;
-    int default_min_delay;
-    int default_max_delay;
-} HopMapManager;
 
 
 

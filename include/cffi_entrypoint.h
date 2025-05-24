@@ -27,17 +27,20 @@ extern "C" {
 #include "./types/antnet_path_types.h"
 #include "./core/backend_thread_defs.h"
 #include "./consts/error_codes.h"
+#include "./types/antnet_sasa_types.h"
+#include "./types/antnet_ranking_types.h"
+
 
 /* 3) The main backend headers that declare the functions Python needs */
 #include "./core/backend.h"            // antnet_initialize, antnet_run_iteration, etc.
 #include "./core/backend_topology.h"   // antnet_update_topology
-#include "./managers/ranking_manager.h"
+
 /* 4) Other solver modules or managers that Python calls or references */
 #include "./algo/cpu/cpu_random_algo.h"        // random_search_path
 #include "./algo/cpu/cpu_brute_force.h"  // brute_force_search_step
 #include "./algo/cpu/cpu_ACOv1.h"          // aco_v1_...
 #include "./managers/config_manager.h"     // config_load, config_save, ...
-#include "./managers/hop_map_manager.h"
+//#include "./managers/hop_map_manager.h"
 
 /* 5) generators , e.g. heatmap_renderer*/
 #include "./rendering/heatmap_renderer.h"

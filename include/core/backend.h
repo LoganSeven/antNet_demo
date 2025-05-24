@@ -19,8 +19,6 @@
 #include "../rendering/heatmap_renderer.h"
 #include "../rendering/heatmap_renderer_async.h" /* added for async approach */
 
-/* SASA addition: include the SASA state definition */
-#include "../managers/ranking_manager.h"
 
 /* NEW: include RankingEntry definition */
 #include "../types/antnet_ranking_types.h"
