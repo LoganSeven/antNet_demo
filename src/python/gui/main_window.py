@@ -18,8 +18,8 @@ from qtpy.QtGui import QColor
 
 from core.core_manager import CoreManager
 from gui.graph_view.graph_canvas import GraphCanvas
-from gui.control_widget import ControlWidget
-from gui.aco_visu_widget import AcoVisuWidget
+from gui.widgets.control_widget import ControlWidget
+from gui.widgets.aco_visu_widget import AcoVisuWidget
 from gui.managers.signal_manager import SignalManager
 from gui.consts.gui_consts import ALGO_COLORS
 from ffi.backend_api import render_heatmap_rgba, init_async_renderer, shutdown_async_renderer

@@ -1,7 +1,8 @@
+# src/python/gui/widgets/fit_width_label.py
 from qtpy.QtWidgets import QLabel, QSizePolicy
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QFontDatabase, QFont
-from .font_lut import size_for_width  # import the LUT interpolation utility
+from .utils.font_lut import size_for_width  # import the LUT interpolation utility
 
 class FitWidthLabel(QLabel):
     """

@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QGridLayout
-from gui.fit_width_button import FitWidthButton
+from ..widgets.fit_width_button import FitWidthButton
 
 
 class FitWidthButtonManager:

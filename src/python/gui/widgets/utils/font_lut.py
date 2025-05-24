@@ -1,5 +1,4 @@
-# font_lut.py
-
+# src/python/gui/widgets/utils/font_lut.py
 from qtpy.QtGui import QFont
 
 # Default LUT: list of (widget_width_px, font_point_size)

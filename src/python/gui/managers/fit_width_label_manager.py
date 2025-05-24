@@ -1,5 +1,5 @@
 from qtpy.QtWidgets import QGridLayout
-from gui.fit_width_label import FitWidthLabel
+from ..widgets.fit_width_label import FitWidthLabel
 
 
 class FitWidthLabelManager:
