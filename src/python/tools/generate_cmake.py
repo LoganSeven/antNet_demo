@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# Relative Path: src/python/tools/generate_cmake.py
 """
 generate_cmake.py
 

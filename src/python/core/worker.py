@@ -1,9 +1,10 @@
-# src/python/core/worker.py
+# Relative Path: src/python/core/worker.py
 """
-Worker: handles backend C operations asynchronously in a separate thread.
-Can be initialized either from an INI config file (preferred for consistency),
-or from a provided AppConfig dictionary.
+Worker runs the C backend logic in a separate thread, wrapping solver updates in a loop.
+Loads config (from .ini or dict), periodically invokes solvers, and sends updates via callbacks.
+Ensures concurrency and synchronization between the GUI and the backend.
 """
+
 
 import time
 from threading import Event, Lock

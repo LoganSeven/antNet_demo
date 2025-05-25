@@ -1,9 +1,10 @@
 /* Relative Path: include/core/backend_params.h */
 /*
- * backend_params.h
- * Internal header for parameter handling in AntNet.
- * Public API remains in backend.h.
- */
+ * Internal header for handling configuration and parameter updates in AntNet.
+ * Exposes declarations to manage solver or system-wide settings.
+ * An extension over backend.h for advanced configuration logic.
+*/
+
 
 #ifndef BACKEND_PARAMS_H
 #define BACKEND_PARAMS_H

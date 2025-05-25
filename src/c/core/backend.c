@@ -1,18 +1,15 @@
 /* Relative Path: src/c/core/backend.c */
 /*
- * backend.c
- * Now contains only the rendering functions and their async manager calls,
- * plus any other logic not covered by the initialization, solver, or parameter files.
- */
+ * Provides asynchronous GPU-based rendering functions, decoupled from the main AntNet context.
+ * Manages a persistent background renderer for heatmap generation and offers thread-safe APIs.
+ * Useful for visualizing pheromone intensity in real-time.
+*/
+
 #include "../../../include/core/backend_init.h"
 #include "../../../include/core/backend.h"
 #include "../../../include/consts/error_codes.h"
 #include "../../../include/rendering/heatmap_renderer_async.h"
 
-
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #ifndef _WIN32
 #include <pthread.h>

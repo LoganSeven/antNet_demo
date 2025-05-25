@@ -1,4 +1,4 @@
-# src/python/gui/managers/fit_width_tabwidget_manager.py
+# Relative Path: src/python/gui/managers/fit_width_tabwidget_manager.py
 from ..widgets.tab_sheet_widget import TabSheetWidget
 
 class FitWidthTabWidgetManager:

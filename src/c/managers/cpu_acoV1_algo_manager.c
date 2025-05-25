@@ -1,8 +1,10 @@
 /* Relative Path: src/c/managers/cpu_acoV1_algo_manager.c */
 /*
- * cpu_aco_algo_manager.c
- * Implementation of the manager for the ACO-based search algorithm in AntNet.
- */
+ * Manages the ACO V1 algorithm, coordinating initialization, iteration, and path search.
+ * Provides a unified interface to the underlying cpu_ACOv1 implementation.
+ * Useful for hooking ACO steps into the main AntNet flow.
+*/
+
 
 #include "../../../include/core/backend.h"
 #include "../../../include/managers/cpu_acoV1_algo_manager.h"

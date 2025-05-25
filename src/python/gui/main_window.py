@@ -1,6 +1,8 @@
+# Relative Path: src/python/gui/main_window.py
 """
-MainWindow sets up the GUI layout, starts the CoreManager (which spins up the Workers),
-and connects signals for solver results to be drawn in the GraphScene.
+MainWindow establishes the primary layout (splitters, tabs, and graph canvas).
+Initializes CoreManager workers, handles OpenGL checks, and coordinates UI updates.
+Acts as the top-level container for the AntNet demo’s GUI.
 """
 
 from qtpy.QtCore import Qt, QTimer, Signal, QEvent

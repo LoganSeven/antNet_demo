@@ -1,10 +1,10 @@
 /* Relative Path: src/c/algo/cpu/cpu_ACOv1_shared_structs.c */
-
 /*
- * 
- * Implements utilities for thread-local pheromone data and merging them into
- * the shared pheromone matrix. Ensures no race conditions or memory leaks.
- */
+ * Defines and handles thread-local structures for pheromone deltas and best paths.
+ * Provides safe creation, merging, and destruction of these auxiliary data objects.
+ * Helps avoid concurrency issues in multi-threaded ACO iterations.
+*/
+
 
 #include "../../../../include/algo/cpu/cpu_ACOv1_shared_structs.h"
 #include "../../../../include/consts/error_codes.h"

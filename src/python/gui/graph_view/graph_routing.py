@@ -1,3 +1,10 @@
+# Relative Path: src/python/gui/graph_view/graph_routing.py
+"""
+GraphRoutingUtils computes geometric segments for multi-node paths.
+Adapts hop-based layouts (row/col spacing) into visually appealing lines.
+Central tool for generating offset paths, preventing node overlap.
+"""
+
 from gui.consts.algo_consts import PATH_DIRECTION
 
 class GraphRoutingUtils:

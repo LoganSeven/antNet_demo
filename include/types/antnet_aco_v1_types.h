@@ -1,6 +1,10 @@
 /* Relative Path: include/types/antnet_aco_v1_types.h */
+/*
+ * Declares AcoV1State for storing ACO-related data (pheromones, adjacency, hyperparameters).
+ * Incorporated within AntNetContext as 'aco_v1' to manage solver-specific memory and settings.
+ * Indicates initialization status to avoid re-initializing a preconfigured solver.
+*/
 
-/* include/antnet_aco_v1_types.h */
 #ifndef ANTNET_ACO_V1_TYPES_H
 #define ANTNET_ACO_V1_TYPES_H
 

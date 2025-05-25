@@ -1,13 +1,10 @@
-# src/python/gui/graph_view/graph_canvas.py
+# Relative Path: src/python/gui/graph_view/graph_canvas.py
 """
-GraphCanvas holds a GraphScene inside a QGraphicsView.
-It does not directly manage node counts; instead, MainWindow or other higher-level
-components call scene.init_scene_with_nodes(...) after reading configuration.
+GraphCanvas is a QGraphicsView containing a GraphScene.
+Resizes dynamically and updates node positions, edges, and overlays with the sceneRect.
+Serves as the primary display surface for the entire network graph.
+"""
 
-Now, we ensure the sceneRect expands to match the viewport size, then
-we instruct GraphScene to recalc the node positions for that new space,
-horizontally filling, and vertically centering the layout.
-"""
 
 from qtpy.QtWidgets import QGraphicsView
 from qtpy.QtGui import QPainter

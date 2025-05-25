@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# src/python/ffi/build_builder.py
+# Relative Path: src/python/tools/build_builder.py
 
 import os
 import argparse

@@ -1,4 +1,9 @@
-# src/python/core/callback_adapter.py
+# Relative Path: src/python/core/callback_adapter.py
+"""
+QCCallbackToSignal bridges C/Worker callbacks to Qt signals, enabling thread-safe UI updates.
+Converts direct solver notifications into Qt signals consumable by the main thread.
+"""
+
 from typing import List
 from qtpy.QtCore import QObject, Signal, Slot
 

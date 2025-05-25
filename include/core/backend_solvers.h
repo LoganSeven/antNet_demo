@@ -1,10 +1,10 @@
 /* Relative Path: include/core/backend_solvers.h */
-
 /*
- * backend_solvers.h
- * Internal header for solver orchestration logic in AntNet.
- * Public API is in backend.h, so no repeated declarations here.
- */
+ * Internal header for solver coordination and orchestration in AntNet.
+ * Ties together context management with solver logic, bridging them to the public API.
+ * Facilitates structured, thread-safe solver operations.
+*/
+
 
 #ifndef BACKEND_SOLVERS_H
 #define BACKEND_SOLVERS_H

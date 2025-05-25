@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Relative Path: src/python/tools/backend_end_api_builder.py
 #
 # Ensures 'backend_api.py' contains wrappers for all C functions declared

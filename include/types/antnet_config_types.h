@@ -1,4 +1,10 @@
 /* Relative Path: include/types/antnet_config_types.h */
+/*
+ * Declares AppConfig struct, representing simulation and feature settings loaded from .ini files.
+ * Holds fields for general simulation parameters, node configuration, DDoS scenarios, and more.
+ * Acts as the central container for user-defined or default config values in AntNet.
+*/
+
 #ifndef ANTNET_CONFIG_TYPES_H
 #define ANTNET_CONFIG_TYPES_H
 

@@ -1,42 +1,10 @@
 /* Relative Path: src/c/algo/cpu/cpu_ACOv1.c */
-/* 
- *
- * Behavior:
- *   This implementation parallels random_algo.c but replaces uniform random selection
- *   of intermediate nodes with pheromone-weighted selection.  It respects ctx->min_hops
- *   and ctx->max_hops exactly as random does, picking a single subset of nodes each
- *   iteration (rather than multiple ants).  If the resulting path cost is better,
- *   it updates ctx->aco_best_*.
- *
- *   -- UPDATE --
- *   This file now supports both single-ant and multi-ant modes:
- *     - If ctx->aco_v1.num_ants <= 1, we run the original single-ant logic
- *       (aco_v1_run_iteration_single).
- *     - If ctx->aco_v1.num_ants > 1, we run aco_v1_run_iteration_threaded (see cpu_ACOv1_threaded.c).
- *
- * Thread Safety:
- *   Like random_algo.c, the single-ant routine does NOT lock ctx internally;
- *   the caller must lock the context at a higher level (e.g., antnet_run_all_solvers).
- *   The multi-ant routine manages thread creation and merges deltas under a single final lock.
- *
- * Memory Safety:
- *   Allocates arrays for candidates and the new path, frees them appropriately.
- *   No out-of-bound indexing.
- *
- * Debug Logging:
- *   Extensively logs each step: chosen nb_selected_nodes, node-level pheromone,
- *   the selected subset, the final path, total cost, etc.
- *
- * Rationale:
- *   - Picks nb_selected_nodes ∈ [ctx->min_hops..ctx->max_hops].
- *   - Clamps it by candidate_count = (ctx->num_nodes - 2).
- *   - Builds a node_list of all possible intermediate nodes = [2..(num_nodes-1)].
- *   - Computes a node-level pheromone: node_pheromone[i] = sum of pheromones[i*n + k] for k in [0..n-1].
- *   - Selects nb_selected_nodes from node_list by weighted random draw (without replacement).
- *   - Applies a Fisher-Yates shuffle to that subset, just like random does.
- *   - Builds the final path = [0, chosen_subset..., 1].
- *   - Sums latency, if better than the stored best, updates.
- */
+/*
+ * Main ACO V1 algorithm combining single-ant and multi-ant modes.
+ * Selects a subset of nodes via pheromone-weighted picks, updating global best path if improved.
+ * Central entry point for ACO initialization, iteration, and best-path retrieval.
+*/
+
 
 #include <stdio.h>
 #include <stdlib.h>

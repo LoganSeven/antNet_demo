@@ -1,4 +1,9 @@
 /* Relative Path: include/types/antnet_brute_force_types.h */
+/*
+ * Describes BruteForceState used by the brute-force solver to track iteration through
+ * node combinations and permutations.
+ * Includes fields for candidate nodes, permutation/combination arrays, and progress flags.
+*/
 
 #ifndef ANTNET_BRUTE_FORCE_TYPES_H
 #define ANTNET_BRUTE_FORCE_TYPES_H

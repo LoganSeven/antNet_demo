@@ -1,10 +1,10 @@
 /* Relative Path: src/c/core/backend_solvers.c */
-
 /*
- * backend_solvers.c
- * Implements solver orchestration functions such as pub_run_iteration,
- * pub_run_all_solvers, and retrieval of best path from the random solver.
- */
+ * Orchestrates solver operations (ACO, Random, Brute-Force) and retrieves best paths.
+ * Manages thread-safe iteration counters and aggregator logic for solver outputs.
+ * Key file for coordinating multi-solver pathfinding in AntNet.
+*/
+
 
 #include "../../../include/core/backend_solvers.h"
 #include "../../../include/managers/cpu_acoV1_algo_manager.h"

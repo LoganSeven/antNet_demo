@@ -1,3 +1,4 @@
+# Relative Path: src/python/gui/managers/fit_width_button_manager.py
 from qtpy.QtWidgets import QGridLayout
 from ..widgets.fit_width_button import FitWidthButton
 

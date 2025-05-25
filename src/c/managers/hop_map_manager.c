@@ -1,4 +1,10 @@
 /* Relative Path: src/c/managers/hop_map_manager.c */
+/*
+ * Builds and maintains a hop-based node map, assigning positions and delays.
+ * Creates default edges and exports topology data in a thread-safe manner.
+ * Useful for demonstration or simple graph generation within AntNet.
+*/
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

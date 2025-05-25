@@ -1,6 +1,10 @@
 /* Relative Path: include/types/antnet_aco_v1_params.h */
+/*
+ * Defines the aco_v1_params_t struct for user-configurable ACO parameters.
+ * Allows external control over alpha, beta, evaporation, Q, and the number of ants.
+ * Includes a function to set these parameters in the corresponding context.
+*/
 
-/* include/antnet_aco_v1_params.h */
 #ifndef ANTNET_ACO_V1_PARAMS_H
 #define ANTNET_ACO_V1_PARAMS_H
 

@@ -1,9 +1,10 @@
 /* Relative Path: include/algo/cpu/cpu_random_algo_path_reorder.h */
 /*
- * cpu_random_algo_path_reorder.h
- * Declares a helper function to reorder the intermediate nodes of a path
- * for display or frontend usage only, in ascending order by node_id.
- */
+ * Defines a utility for reordering intermediate nodes in a randomly generated path.
+ * Preserves the start/end nodes and sorts only the middle portion by ascending node_id.
+ * Strictly cosmetic for clearer visualization.
+*/
+
 
 #ifndef CPU_RANDOM_ALGO_PATH_REORDER_H
 #define CPU_RANDOM_ALGO_PATH_REORDER_H

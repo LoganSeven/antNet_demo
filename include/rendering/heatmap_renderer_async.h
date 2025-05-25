@@ -1,4 +1,10 @@
 /* Relative Path: include/rendering/heatmap_renderer_async.h */
+/*
+ * Declares an asynchronous renderer that uses a dedicated thread and GL context.
+ * Provides functions to start/stop the thread and enqueue blocking heatmap render jobs.
+ * Enables concurrent visualization tasks without blocking the main AntNet flow.
+*/
+
 #ifndef HEATMAP_RENDERER_ASYNC_H
 #define HEATMAP_RENDERER_ASYNC_H
 

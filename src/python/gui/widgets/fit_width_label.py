@@ -1,4 +1,4 @@
-# src/python/gui/widgets/fit_width_label.py
+# Relative Path: src/python/gui/widgets/fit_width_label.py
 from qtpy.QtWidgets import QLabel, QSizePolicy
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QFontDatabase, QFont

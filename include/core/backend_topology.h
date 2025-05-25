@@ -1,4 +1,10 @@
 /* Relative Path: include/core/backend_topology.h */
+/*
+ * Declares pub_update_topology for modifying graph structures in a context.
+ * Includes node and edge definitions, either inline for CFFI or via standard headers.
+ * Central point for injecting new or modified network data into AntNet.
+*/
+
 #ifndef BACKEND_TOPOLOGY_H
 #define BACKEND_TOPOLOGY_H
 

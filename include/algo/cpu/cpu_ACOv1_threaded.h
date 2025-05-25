@@ -1,10 +1,10 @@
 /* Relative Path: include/algo/cpu/cpu_ACOv1_threaded.h */
-
 /*
- * cpu_ACOv1_threaded.h
- * Declares a multi-threaded runner for the ACO iteration. Each ant executes in parallel,
- * storing local deltas, then merging them at the end.
- */
+ * Declares a multi-threaded ACO iteration manager, spinning up one thread per ant.
+ * Each ant computes its path and local delta, merging results after completion.
+ * Enhances performance by reducing lock contention.
+*/
+
 
 #ifndef CPU_ACOV1_THREADED_H
 #define CPU_ACOV1_THREADED_H

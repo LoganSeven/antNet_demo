@@ -1,5 +1,4 @@
-# src/python/gui/aco_visu_widget.py
-
+# Relative Path: src/python/gui/widgets/aco_visu_widget.py
 import sys
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QScrollBar, QApplication
 from qtpy.QtCore import Qt, QTimer, QEvent

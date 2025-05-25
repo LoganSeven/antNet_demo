@@ -1,14 +1,12 @@
 /* Relative Path: include/algo/cpu/cpu_ACOv1.h */
+/*
+ * Main ACO V1 API: initialization, single/multi-ant iteration, and best-path retrieval.
+ * Integrates pheromone-based route selection with an optional threaded approach.
+ * Provides methods to incorporate ACO solutions into AntNet’s solver flow.
+*/
+
 #ifndef CPU_ACOV1_H
 #define CPU_ACOV1_H
-
-/*
- * cpu_ACOv1.h
- * Skeleton for a future version 1 ACO-based solver.
- * This file declares placeholders for initialization, iteration, and best-path retrieval.
- * 
- * The original comment about stubs is preserved, but logic is now fully implemented.
- */
 
 #ifdef __cplusplus
 extern "C" {

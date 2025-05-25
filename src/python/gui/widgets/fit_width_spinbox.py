@@ -1,4 +1,4 @@
-# src/python/gui/widgets/fit_width_spinbox.py
+# Relative Path: src/python/gui/widgets/fit_width_spinbox.py
 from qtpy.QtWidgets import QSpinBox, QSizePolicy
 from qtpy.QtCore    import Qt
 from qtpy.QtGui     import QFontDatabase, QFont

@@ -1,4 +1,10 @@
 /* Relative Path: src/c/core/backend_topology.c */
+/*
+ * Updates and validates the network topology (nodes, edges) in a thread-safe manner.
+ * Resets algorithm states when the topology changes, preventing stale data.
+ * Central place for re-initializing internal memory for ACO or brute-force searches.
+*/
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

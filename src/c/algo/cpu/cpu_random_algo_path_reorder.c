@@ -1,12 +1,11 @@
 /* Relative Path: src/c/algo/cpu/cpu_random_algo_path_reorder.c */
 /*
- * cpu_random_algo_path_reorder.c
- * Provides a helper function to reorder the intermediate nodes of a path
- * for display or frontend usage, without altering the internal random solver logic.
- */
+ * Reorders intermediate nodes of a random-generated path by ascending node_id.
+ * Leaves the boundary nodes intact, ensuring only a cosmetic or display-focused change.
+ * Helps maintain a clear external representation without altering solver internals.
+*/
 
 #include "../../../../include/algo/cpu/cpu_random_algo_path_reorder.h"
-#include <stdlib.h>
 
 /*
  * random_algo_reorder_path_for_display

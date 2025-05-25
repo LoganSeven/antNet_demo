@@ -1,11 +1,10 @@
 /* Relative Path: src/c/algo/cpu/cpu_ACOv1_threaded.c */
-
 /*
- * cpu_ACOv1_threaded.c
- * Implements the multi-threaded version of a single ACO iteration. Each ant
- * has a private local delta array to avoid race conditions. A single lock is used
- * during the final merge stage only.
- */
+ * Implements a multi-threaded ACO iteration, one thread per ant.
+ * Each thread accumulates local updates, then merges them into global pheromones.
+ * Reduces contention by deferring global writes until a final consolidation step.
+*/
+
 
 #include "../../../../include/algo/cpu/cpu_ACOv1_threaded.h"
 #include "../../../../include/algo/cpu/cpu_ACOv1_shared_structs.h"

@@ -1,13 +1,15 @@
 /* Relative Path: src/c/managers/cpu_brute_force_algo_manager.c */
 /*
- * cpu_brute_force_algo_manager.c
- * Implementation of the manager for the brute-force search algorithm in AntNet.
- */
+ * Manages brute-force search steps within AntNet.
+ * Coordinates a stepwise exhaustive search for pathfinding and updates internal states.
+ * Essential for verifying correctness or comparing against heuristic methods.
+*/
+
 
 #include "../../../include/core/backend.h"
 #include "../../../include/managers/cpu_brute_force_algo_manager.h"
 #include "../../../include/algo/cpu/cpu_brute_force.h"
-#include <string.h>
+
 
 /* brute_force_algo_manager_init
  * Initializes the brute-force solver (if needed).

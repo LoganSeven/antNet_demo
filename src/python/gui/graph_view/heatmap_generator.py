@@ -1,12 +1,10 @@
-# src/python/gui/graph_view/heatmap_generator.py
+# Relative Path: src/python/gui/graph_view/heatmap_generator.py
 """
-Heatmap generator for the ACO pheromone matrix using one square per node.
-Each node emits a visual square beneath its position, with color and intensity
-mapped from its outgoing pheromone strength.
-This avoids all interpolation and uses pure Qt painting for maximum performance.
+Generates a heatmap overlay for pheromone strengths in CPU or GPU modes.
+Provides utilities to convert RGBA data into QPixmap for Qt display.
+Enables real-time visualization of solver-based pheromone distributions.
+"""
 
-Also supports GPU-based (OpenGL) offscreen rendering via ffi.backend_api.
-"""
 
 import numpy as np
 from qtpy.QtGui import QPixmap, QImage

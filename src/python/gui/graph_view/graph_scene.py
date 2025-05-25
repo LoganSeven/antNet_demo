@@ -1,7 +1,10 @@
+# Relative Path: src/python/gui/graph_view/graph_scene.py
 """
-GraphScene is responsible for visualizing the network graph (nodes and edges).
-It delegates topology structure to HopMapManager and focuses on Qt-based rendering.
+GraphScene organizes a set of NodeItems, EdgeItems, and an optional heatmap overlay.
+Bridges the HopMapManager’s conceptual nodes/edges with Qt’s graphics scene.
+Allows dynamic layout, real-time path drawing, and GPU or CPU heatmap rendering.
 """
+
 from typing import List, Optional, Union
 from structs._generated.auto_structs import NodeData, EdgeData
 

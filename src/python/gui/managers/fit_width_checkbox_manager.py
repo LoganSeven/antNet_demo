@@ -1,4 +1,4 @@
-# src/python/gui/fit_width_checkbox_manager.py
+# Relative Path: src/python/gui/managers/fit_width_checkbox_manager.py
 from ..widgets.fit_width_checkbox import FitWidthCheckBox
 
 class FitWidthCheckBoxManager:

@@ -1,4 +1,10 @@
 /* Relative Path: src/c/managers/config_manager.c */
+/*
+ * Loads and saves configuration data from .ini files with thread safety.
+ * Supplies default settings and parses boolean/int/float fields for simulation parameters.
+ * Central utility for persistent config handling in AntNet.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

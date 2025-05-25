@@ -96,3 +96,6 @@ desktop.ini
 /documentation/*.toc
 /documentation/*.log
 /documentation/*.out
+default_post_prompt.txt
+default_pre_prompt.txt
+prompt_generator.py

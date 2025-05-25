@@ -1,4 +1,10 @@
 /* Relative Path: include/types/antnet_sasa_types.h */
+/*
+ * Defines SASA coefficients (alpha, beta, gamma) and state for incremental solver scoring.
+ * Tracks improvements, intervals, and overall performance metrics for real-time ranking.
+ * Forms the basis of the SASA-based solver comparison in AntNet.
+*/
+
 #ifndef ANTNET_SASA_TYPES_H
 #define ANTNET_SASA_TYPES_H
 

@@ -1,4 +1,4 @@
-#src/python/gui/consts/algo_consts.py
+# Relative Path: src/python/gui/consts/algo_consts.py
 
 PATH_DIRECTION = {
     0 :    "up",

@@ -1,4 +1,10 @@
 /* Relative Path: include/core/backend_thread_defs.h */
+/*
+ * Declares platform-specific thread definitions used by the AntNet backend.
+ * Provides a minimal pthread mutex stub for Windows or CFFI builds.
+ * Ensures consistent locking abstractions across supported platforms.
+*/
+
 #ifndef BACKEND_THREAD_DEFS_H
 #define BACKEND_THREAD_DEFS_H
 

@@ -1,4 +1,10 @@
 /* Relative Path: include/consts/error_codes.h */
+/*
+ * Central repository of error codes for AntNet backend operations.
+ * Negative values indicate specific failure causes, zero for success.
+ * Standardizes return codes across all modules and solvers.
+*/
+
 #ifndef ERROR_CODES_H
 #define ERROR_CODES_H
 

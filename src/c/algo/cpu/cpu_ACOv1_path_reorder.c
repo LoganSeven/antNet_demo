@@ -1,9 +1,10 @@
 /* Relative Path: src/c/algo/cpu/cpu_ACOv1_path_reorder.c */
 /*
- * cpu_ACOv1_path_reorder.c
- * Provides a helper function to reorder the intermediate nodes of a path
- * for display or frontend usage without altering the internal ACO logic.
- */
+ * Reorders the intermediate nodes of an ACO-generated path for external display.
+ * Helps keep solver internals intact while returning a cleaner path sequence.
+ * Purely cosmetic function, ignores actual optimization logic.
+*/
+
 
 #include "../../../../include/algo/cpu/cpu_ACOv1_path_reorder.h"
 

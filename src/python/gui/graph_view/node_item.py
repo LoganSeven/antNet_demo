@@ -1,4 +1,10 @@
-# src/python/gui/graph_view/node_item.py
+# Relative Path: src/python/gui/graph_view/node_item.py
+"""
+Defines NodeItem, a moveable QGraphicsEllipseItem with an optional label.
+Tracks x,y in itemChange to keep internal references and connected edges in sync.
+Mainly responsible for visually representing a single node with configurable delay_ms.
+"""
+
 from qtpy.QtWidgets import QGraphicsEllipseItem, QGraphicsTextItem, QGraphicsItem
 from qtpy.QtGui import QBrush, QPen, QColor
 from qtpy.QtCore import QRectF, Qt

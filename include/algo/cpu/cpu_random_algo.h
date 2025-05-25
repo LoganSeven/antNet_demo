@@ -1,4 +1,10 @@
 /* Relative Path: include/algo/cpu/cpu_random_algo.h */
+/*
+ * Provides a baseline random pathfinding approach for AntNet.
+ * Randomly selects intermediate hops, forms a path, updates the best route if improved.
+ * Simple but valuable for performance comparisons against advanced algorithms.
+*/
+
 #ifndef RANDOM_ALGO_H
 #define RANDOM_ALGO_H
 

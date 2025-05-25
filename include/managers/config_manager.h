@@ -1,4 +1,10 @@
 /* Relative Path: include/managers/config_manager.h */
+/*
+ * Declares functions for loading, saving, and resetting AppConfig structures.
+ * Handles .ini file parsing and ensures default values for AntNet simulation parameters.
+ * Central utility for persistent configuration management.
+*/
+
 
 #ifndef CONFIG_MANAGER_H
 #define CONFIG_MANAGER_H

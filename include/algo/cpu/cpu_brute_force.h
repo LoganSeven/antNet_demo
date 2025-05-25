@@ -1,4 +1,10 @@
 /* Relative Path: include/algo/cpu/cpu_brute_force.h */
+/*
+ * Enumerates possible paths by increasing hop counts and permutations/combinations.
+ * Updates and exposes the best brute-force path to the caller each step.
+ * Ideal for exhaustive checks or validating heuristic solvers.
+*/
+
 #ifndef CPU_BRUTE_FORCE_H
 #define CPU_BRUTE_FORCE_H
 

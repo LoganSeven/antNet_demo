@@ -1,8 +1,10 @@
 /* Relative Path: src/c/core/backend_init.c */
 /*
- * backend_init.c
- * Implements the global context arrays, locking, initialization, and shutdown routines.
- */
+ * Manages global context creation, initialization, and shutdown for AntNet instances.
+ * Provides a thread-safe pool of contexts and cleans up resources upon destruction.
+ * Entry point for setting up all major components (nodes, edges, solver states).
+*/
+
 
 #include "../../../include/core/backend_init.h"
 #include "../../../include/consts/error_codes.h"

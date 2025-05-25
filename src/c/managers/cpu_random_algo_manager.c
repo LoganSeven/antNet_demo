@@ -1,13 +1,13 @@
 /* Relative Path: src/c/managers/cpu_random_algo_manager.c */
 /*
- * cpu_random_algo_manager.c
- * Implementation of the manager for the random search algorithm in AntNet.
- */
+ * Manages a simple random pathfinding solver for baseline comparisons.
+ * Coordinates random search, capturing best path found and updating states.
+ * Minimal overhead, useful for measuring performance against advanced solvers.
+*/
 
 #include "../../../include/core/backend.h"
 #include "../../../include/managers/cpu_random_algo_manager.h"
 #include "../../../include/algo/cpu/cpu_random_algo.h"
-#include <string.h>
 
 /* random_algo_manager_init
  * Initializes the random solver (if needed).

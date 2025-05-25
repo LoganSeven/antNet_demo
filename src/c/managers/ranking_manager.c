@@ -1,8 +1,10 @@
 /* Relative Path: src/c/managers/ranking_manager.c */
 /*
- * Implements the incremental SASA scoring logic and a helper function
- * to rank multiple algorithms by their SASA score.
- */
+ * Implements SASA-based ranking for solver performance, tracking improvements over time.
+ * Recalculates and compares solver scores with alpha-beta-gamma weighting.
+ * Central logic for algorithm ranking and progress measurement.
+*/
+
 
 #include "../../../include/managers/ranking_manager.h"
 #include <float.h>  /* for DBL_MAX */

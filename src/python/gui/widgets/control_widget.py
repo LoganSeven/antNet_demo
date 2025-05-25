@@ -1,4 +1,4 @@
-# src/python/gui/widgets/control_widget.py
+# Relative Path: src/python/gui/widgets/control_widget.py
 from qtpy.QtWidgets import (
     QWidget,
     QGridLayout,

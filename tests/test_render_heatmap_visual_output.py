@@ -1,4 +1,4 @@
-# tests/test_render_heatmap_visual_output.py
+# Relative Path:
 """
 Heatmap rendering test using the GPU backend (offscreen EGL context).
 Saves the output as output.png and verifies dimensions.

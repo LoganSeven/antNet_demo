@@ -1,18 +1,10 @@
 /* Relative Path: src/c/algo/cpu/cpu_random_algo.c */
 /*
- * random_search_path: main function
- * - picks a random count in [ctx->min_hops..ctx->max_hops]
- * - selects distinct random nodes from the range [2..ctx->num_nodes-1] if possible
- * - forms a path (start_id + chosen + end_id)
- * - sums total latency from each node in that path
- * - if it improves the stored best path in ctx->random_best_*, updates it
- * - copies the best path so far into out_nodes, out_path_len, out_total_latency
- * Returns 0 on success, negative error codes otherwise
- *
- * Thread Safety:
- *   This function does NOT acquire ctx->lock.
- *   The caller must lock ctx before calling (e.g. from bridging or top-level API).
- */
+ * Explores all possible node combinations and permutations in incremental steps.
+ * Updates the global best brute-force path if a lower-latency route is found.
+ * Provides a stateful "one path per call" approach for demonstration or exact optimization.
+*/
+
 
 #include <stdio.h>
 #include <stdlib.h>

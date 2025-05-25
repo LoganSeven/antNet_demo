@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# src/python/ffi/preprocess_headers.py
+# Relative Path: src/python/tools/preprocess_headers.py
 """
 Preprocess C headers for pycparser.
 

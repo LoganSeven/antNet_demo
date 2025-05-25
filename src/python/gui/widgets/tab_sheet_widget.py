@@ -1,4 +1,4 @@
-# src/python/gui/widgets/tab_sheet_widget.py
+# Relative Path: src/python/gui/widgets/tab_sheet_widget.py
 from qtpy.QtWidgets import QTabWidget, QWidget
 from qtpy.QtGui import QFontDatabase, QFont
 from qtpy.QtCore import Qt

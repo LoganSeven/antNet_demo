@@ -1,4 +1,10 @@
 /* Relative Path: include/rendering/heatmap_renderer.h */
+/*
+ * Defines an offscreen HeatmapRenderer and its basic operations.
+ * Responsible for creating/destroying a rendering instance and drawing a heatmap.
+ * Low-level interface used by the asynchronous layer for actual GPU-based computations.
+*/
+
 #ifndef HEATMAP_RENDERER_H
 #define HEATMAP_RENDERER_H
 

@@ -1,10 +1,10 @@
 /* Relative Path: include/core/backend.h */
 /*
- * backend.h
- * Main public API for the AntNet backend.
- * (Original content preserved; only adapted to add ACO fields, get_config,
- *  and new SASA/ACO param setters & getters.)
- */
+ * Main public API for initializing, running, and managing AntNet contexts.
+ * Defines the AntNetContext struct and functions for solver coordination, config, and I/O.
+ * Entry point for external modules interacting with the AntNet backend.
+*/
+
 
 #ifndef BACKEND_H
 #define BACKEND_H

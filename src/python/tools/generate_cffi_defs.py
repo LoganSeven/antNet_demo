@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# src/python/ffi/generate_cffi_defs.py
+# Relative Path: src/python/tools/generate_cffi_defs.py
 """
 Generates "src/python/ffi/cdef_string.py" from pre-processed ".i" files.
 

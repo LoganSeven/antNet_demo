@@ -1,3 +1,5 @@
+# Relative Path: src/python/gui/widgets/utils/font_lut.py
+
 # src/python/gui/widgets/utils/font_lut.py
 from qtpy.QtGui import QFont
 

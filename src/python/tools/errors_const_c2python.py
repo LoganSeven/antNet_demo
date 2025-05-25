@@ -1,4 +1,4 @@
-#src/python/tools/errors_const_c2python.py
+# Relative Path: src/python/tools/errors_const_c2python.py
 """
 errors_const_c2python.py
 Reads a C header file for error code definitions (e.g., #define ERR_SOMETHING <value>)

@@ -1,4 +1,4 @@
-#src/python/gui/widgets/fit_width_button.py
+# Relative Path: src/python/gui/widgets/fit_width_button.py
 from qtpy.QtWidgets import QPushButton, QSizePolicy
 from qtpy.QtGui     import QFontDatabase, QFont
 from .utils.font_lut     import size_for_width

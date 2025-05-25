@@ -1,8 +1,10 @@
 /* Relative Path: include/core/backend_init.h */
 /*
- * backend_init.h
- * Internal header for context creation, retrieval, and shutdown logic in AntNet.
- */
+ * Declares internal functions for creating, retrieving, and shutting down AntNet contexts.
+ * Provides priv_get_context_by_id for safely accessing a context by index.
+ * Used as the backbone for managing global context arrays and concurrency.
+*/
+
 
 #ifndef BACKEND_INIT_H
 #define BACKEND_INIT_H

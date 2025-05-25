@@ -1,10 +1,10 @@
 /* Relative Path: include/algo/cpu/cpu_ACOv1_shared_structs.h */
-
 /*
- * 
- * Data structures and utility functions to manage per-thread pheromone deltas
- * and merge them safely into the shared ACO context.
- */
+ * Holds thread-local data for multi-ant ACO, including per-ant pheromone increments.
+ * Merges these deltas into the global pheromone matrix under one final lock.
+ * Ensures thread safety and avoids race conditions during concurrent ACO runs.
+*/
+
 
 #ifndef CPU_ACOv1_SHARED_STRUCTS_H
 #define CPU_ACOv1_SHARED_STRUCTS_H

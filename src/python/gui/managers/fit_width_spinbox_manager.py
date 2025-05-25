@@ -1,4 +1,4 @@
-# src/python/gui/fit_width_spinbox_manager.py
+# Relative Path: src/python/gui/managers/fit_width_spinbox_manager.py
 from ..widgets.fit_width_spinbox import FitWidthSpinBox
 
 class FitWidthSpinBoxManager:

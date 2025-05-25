@@ -23,7 +23,6 @@ endif()
 include_directories(
     ${CMAKE_SOURCE_DIR}/include/algo
     ${CMAKE_SOURCE_DIR}/include/algo/cpu
-    ${CMAKE_SOURCE_DIR}/include/algo/gpu
     ${CMAKE_SOURCE_DIR}/include/consts
     ${CMAKE_SOURCE_DIR}/include/core
     ${CMAKE_SOURCE_DIR}/include/managers

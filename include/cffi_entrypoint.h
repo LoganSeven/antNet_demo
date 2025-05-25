@@ -1,4 +1,10 @@
 /* Relative Path: include/cffi_entrypoint.h */
+/*
+ * Aggregation header for CFFI builds, combining essential AntNet types and function declarations.
+ * Ensures pycparser sees all required structs, constants, and function prototypes.
+ * Not typically used in normal C builds; specific to Python-C interop setups.
+*/
+
 #ifndef CFFI_ENTRYPOINT_H
 #define CFFI_ENTRYPOINT_H
 

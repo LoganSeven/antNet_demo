@@ -1,16 +1,14 @@
 /* Relative Path: src/c/core/backend_params.c */
 /*
- * backend_params.c
- * Implements configuration and parameter-related API.
- */
+ * Handles configuration and parameter APIs (including SASA, ACO settings).
+ * Loads, updates, and retrieves context-specific settings in a thread-safe manner.
+ * Central hub for controlling solver and system parameters at runtime.
+*/
 
 #include "../../../include/core/backend_params.h"
 #include "../../../include/managers/config_manager.h"
 #include "../../../include/managers/ranking_manager.h"
-#include "../../../include/rendering/heatmap_renderer_async.h"
 #include "../../../include/consts/error_codes.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 /*

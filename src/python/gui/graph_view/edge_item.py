@@ -1,4 +1,10 @@
-# src/python/gui/graph_view/edge_item.py
+# Relative Path: src/python/gui/graph_view/edge_item.py
+"""
+EdgeItem visually represents a directed link between two NodeItems in the scene.
+Updates position if the associated nodes move, maintaining correct line geometry.
+Supports a cosmetic pen for color and width adjustments.
+"""
+
 from qtpy.QtWidgets import QGraphicsLineItem
 from qtpy.QtGui import QPen, QColor
 from qtpy.QtCore import Qt

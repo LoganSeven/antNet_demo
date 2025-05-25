@@ -1,9 +1,15 @@
 /* Relative Path: src/c/algo/cpu/cpu_brute_force.c */
+/*
+ * Explores all possible node combinations and permutations incrementally.
+ * Updates the global best brute-force path when a lower-latency route is found.
+ * Implements a "one path per call" mechanism for demonstration or exact enumeration.
+*/
+
 #include "../../../../include/algo/cpu/cpu_brute_force.h"
 #include "../../../../include/consts/error_codes.h"
 #include <string.h>
 #include <limits.h>
-#include <stdio.h>
+//#include <stdio.h>
 
 static int next_permutation(int *array, int length) {
     int k = length - 2;

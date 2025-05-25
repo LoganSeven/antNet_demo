@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-
+# Relative Path: src/python/tools/generate_structs.py
 import re
 import argparse
 import os

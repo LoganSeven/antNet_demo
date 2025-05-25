@@ -1,4 +1,4 @@
-#/home/react/Desktop/Echo_ai/antnet-demo/src/python/gui/consts/gui_consts.py
+# Relative Path: src/python/gui/consts/gui_consts.py
 """
 Contains color constants used across the GUI.
 """

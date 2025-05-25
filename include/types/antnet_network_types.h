@@ -1,6 +1,9 @@
 /* Relative Path: include/types/antnet_network_types.h */
+/*
+ * Defines basic node and edge structures (NodeData, EdgeData), used throughout AntNet.
+ * Offers a consistent representation of graph components across different modules and build environments.
+*/
 
-// include/antnet_network_types.h
 #ifndef ANTNET_NETWORK_TYPES_H
 #define ANTNET_NETWORK_TYPES_H
 

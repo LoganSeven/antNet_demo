@@ -1,3 +1,10 @@
+# Relative Path: src/python/core/core_manager.py
+"""
+CoreManager orchestrates one or more Worker instances in separate threads.
+Facilitates starting/stopping workers, distributing topology updates, and retrieving adapters.
+Primary controller for multi-threaded backend usage in the Python GUI.
+"""
+
 from typing import TypedDict, List
 from qtpy.QtCore import QObject, QThread
 

@@ -1,4 +1,4 @@
-# src/python/gui/widgets/fit_width_checkbox.py
+# Relative Path: src/python/gui/widgets/fit_width_checkbox.py
 from qtpy.QtWidgets import QCheckBox, QSizePolicy
 from qtpy.QtCore    import Qt
 from qtpy.QtGui     import QFontDatabase, QFont

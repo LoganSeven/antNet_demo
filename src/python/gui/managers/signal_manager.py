@@ -1,7 +1,10 @@
+# Relative Path: src/python/gui/managers/signal_manager.py
 """
-SignalManager centralizes all UI signal/slot connections for thread-safety
-and to keep MainWindow / ControlWidget classes cleaner.
+Centralizes signal and slot connections among MainWindow, ControlWidget, and CoreManager.
+Ensures queued connections for safe cross-thread communication.
+Simplifies UI logic by collecting all event wiring in one place.
 """
+
 
 from __future__ import annotations
 from typing import TYPE_CHECKING

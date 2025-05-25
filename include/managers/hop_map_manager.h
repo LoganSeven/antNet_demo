@@ -1,4 +1,10 @@
 /* Relative Path: include/managers/hop_map_manager.h */
+/*
+ * Maintains a manager for hop-based node placement with optional random delays.
+ * Creates and updates node positions, edges, and exports the resulting topology.
+ * Facilitates dynamic graph generation for demonstrations or simulation scenarios.
+*/
+
 #ifndef HOP_MAP_MANAGER_H
 #define HOP_MAP_MANAGER_H
 

@@ -1,6 +1,11 @@
 /* Relative Path: include/types/antnet_path_types.h */
+/*
+ * Introduces AntNetPathInfo, a lightweight container for storing a path's node list and total latency.
+ * Used in certain modules for passing around route information.
+ * Demonstrative rather than heavily utilized in the current demo.
+*/
 
-// include/antnet_path_types.h
+
 #ifndef ANTNET_PATH_TYPES_H
 #define ANTNET_PATH_TYPES_H
 

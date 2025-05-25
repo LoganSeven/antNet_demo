@@ -1,8 +1,9 @@
 /* Relative Path: include/managers/ranking_manager.h */
 /*
- * Provides the incremental SASA scoring approach for ranking path-finder algorithms.
- * The struct SasaState holds the incremental metrics for one algorithm.
- */
+ * Implements the SASA-based ranking logic for solver performance.
+ * Tracks solver improvements, recalculates scores, and computes a ranked order.
+ * Enables transparent comparison of multiple pathfinding algorithms in AntNet.
+*/
 
 #ifndef RANKING_MANAGER_H
 #define RANKING_MANAGER_H
