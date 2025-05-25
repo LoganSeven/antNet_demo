@@ -2,9 +2,8 @@
 /*
  * Implements a multi-threaded ACO iteration, one thread per ant.
  * Each thread accumulates local updates, then merges them into global pheromones.
- * Reduces contention by deferring global writes until a final consolidation step.
+ * Reduces contention by deferring global writes until a final consolidation step..
 */
-
 
 #include "../../../../include/algo/cpu/cpu_ACOv1_threaded.h"
 #include "../../../../include/algo/cpu/cpu_ACOv1_shared_structs.h"
@@ -23,10 +22,22 @@
 #include <time.h>
 
 /*
+ * AcoThreadArg
+ * Holds the shared context pointer and the per-thread local data.
+ * This replaces the old thread-local usage of g_aco_shared_ctx_tls,
+ * ensuring platform independence and proper multi-thread handling.
+ */
+typedef struct AcoThreadArg
+{
+    AntNetContext*       ctx;          /* Pointer to the shared AntNet context */
+    AcoThreadLocalData*  local_data;   /* Pointer to this thread's local ACO data */
+} AcoThreadArg;
+
+/*
  * Internal function: aco_build_path_for_one_ant
- * Replicates the single-ant logic from aco_v1_run_iteration_single, 
+ * Replicates the single-ant logic from aco_v1_run_iteration_single,
  * but modifies nothing globally. Instead, it calculates the path,
- * cost, and local pheromone deltas. 
+ * cost, and local pheromone deltas.
  */
 static int aco_build_path_for_one_ant(AntNetContext* ctx, AcoThreadLocalData* local_data)
 {
@@ -167,7 +178,7 @@ static int aco_build_path_for_one_ant(AntNetContext* ctx, AcoThreadLocalData* lo
         memcpy(local_data->best_path, new_path, (size_t)new_path_length * sizeof(int));
     }
 
-    /* Prepare local pheromone deltas for edges in the new path 
+    /* Prepare local pheromone deltas for edges in the new path
      * newVal = oldVal*(1-evap) + Q/cost, so delta = newVal - oldVal = -oldVal*evap + Q/cost.
      */
     float evap = ctx->aco_v1.evaporation;
@@ -191,34 +202,24 @@ static int aco_build_path_for_one_ant(AntNetContext* ctx, AcoThreadLocalData* lo
 /*
  * Internal function: aco_thread_func
  * The routine run by each ant thread. Populates local_data->delta_pheromones and best path.
+ *
+ * Previously, this function attempted to retrieve AntNetContext via a thread-local
+ * pointer (g_aco_shared_ctx_tls). That approach is now replaced by passing the pointer
+ * directly in the AcoThreadArg struct, making the code portable and ensuring that each
+ * thread always has a valid context reference.
  */
 static void *aco_thread_func(void *arg)
 {
-    AcoThreadLocalData *local_data = (AcoThreadLocalData *)arg;
-    if (!local_data) {
+    AcoThreadArg* a = (AcoThreadArg*)arg;
+    if (!a || !a->ctx || !a->local_data) {
 #ifndef _WIN32
         pthread_exit(NULL);
 #endif
         return NULL;
     }
 
-    /* We need a pointer to the context. In a real design, we'd pass a struct containing both context + local_data. */
-    /* But for simplicity, store a static pointer in thread-local or pass via a global. 
-     * We do not want to break the architecture, so let's do a minimal approach:
-     * We'll assume a global pointer is set by the caller. 
-     */
-
-    /* This is not fully ideal in large code, but remains a straightforward approach for a small demonstration. */
-    extern __thread AntNetContext *g_aco_shared_ctx_tls; /* thread-local storage in POSIX style */
-    /* fallback if no __thread support, we do a static global. This is a known limitation. */
-    if (!g_aco_shared_ctx_tls) {
-#ifndef _WIN32
-        pthread_exit(NULL);
-#endif
-        return NULL;
-    }
-
-    aco_build_path_for_one_ant(g_aco_shared_ctx_tls, local_data);
+    /* Build path and local pheromone increments using the shared context pointer. */
+    aco_build_path_for_one_ant(a->ctx, a->local_data);
 
 #ifndef _WIN32
     pthread_exit(NULL);
@@ -226,36 +227,34 @@ static void *aco_thread_func(void *arg)
     return NULL;
 }
 
-/* 
- * g_aco_shared_ctx_tls
- * A thread-local pointer to the current context. 
- */
-#ifndef _WIN32
-__thread AntNetContext *g_aco_shared_ctx_tls = NULL;
-#else
-/* On Windows, we do a simple global fallback for demonstration. */
-static AntNetContext *g_aco_shared_ctx_tls = NULL;
-#endif
-
 /*
  * aco_v1_run_iteration_threaded
  * Spawns ctx->aco_v1.num_ants threads, each performing one "ant" iteration with local deltas.
  * Then merges the results under a lock.
+ *
+ * Old Approach:
+ *   - Used a thread-local variable g_aco_shared_ctx_tls for the global context.
+ *   - This was removed to avoid platform differences and concurrency issues.
+ * New Approach:
+ *   - Passes context pointer explicitly via AcoThreadArg. Each thread function
+ *     receives its own argument struct containing (ctx, local_data).
  */
 int aco_v1_run_iteration_threaded(AntNetContext *ctx)
 {
-    if (!ctx) return ERR_INVALID_CONTEXT;
-    if (ctx->aco_v1.pheromone_size <= 0) return ERR_NO_TOPOLOGY;
+    if (!ctx) {
+        return ERR_INVALID_CONTEXT;
+    }
+    if (ctx->aco_v1.pheromone_size <= 0) {
+        return ERR_NO_TOPOLOGY;
+    }
     if (ctx->aco_v1.num_ants <= 1) {
-        /* fallback to single approach if misused */
+        /* fallback to single-ant approach if misused */
         return aco_v1_run_iteration(ctx);
     }
 
-    /* set the global pointer for all threads to see (not elegant but minimal) */
-    g_aco_shared_ctx_tls = ctx;
-
     int ants = ctx->aco_v1.num_ants;
 
+    /* Allocate local data for each ant */
     AcoThreadLocalData **thread_data = (AcoThreadLocalData **)malloc((size_t)ants * sizeof(AcoThreadLocalData*));
     if (!thread_data) {
         return ERR_MEMORY_ALLOCATION;
@@ -270,7 +269,6 @@ int aco_v1_run_iteration_threaded(AntNetContext *ctx)
     }
 #endif
 
-    /* allocate local data for each ant */
     for (int i = 0; i < ants; i++) {
         thread_data[i] = aco_shared_create_local_data(ctx->aco_v1.pheromone_size);
         if (!thread_data[i]) {
@@ -287,27 +285,49 @@ int aco_v1_run_iteration_threaded(AntNetContext *ctx)
         }
     }
 
-    /* launch each ant in its own thread */
+    /*
+     * Build an array of AcoThreadArg, one per ant. Each entry holds the same
+     * shared context pointer plus that ant's local_data.
+     */
+    AcoThreadArg* arg_array = (AcoThreadArg*)malloc(sizeof(AcoThreadArg) * ants);
+    if (!arg_array) {
+        /* cleanup if allocation fails */
+        for (int j = 0; j < ants; j++) {
+            aco_shared_free_local_data(thread_data[j]);
+            thread_data[j] = NULL;
+        }
 #ifndef _WIN32
+        free(threads);
+#endif
+        free(thread_data);
+        return ERR_MEMORY_ALLOCATION;
+    }
+    memset(arg_array, 0, sizeof(AcoThreadArg) * ants);
+
     for (int i = 0; i < ants; i++) {
-        pthread_create(&threads[i], NULL, aco_thread_func, thread_data[i]);
+        arg_array[i].ctx = ctx;
+        arg_array[i].local_data = thread_data[i];
     }
 
-    /* wait for all threads to finish */
+    /* Launch each ant in its own thread (POSIX), or a single-thread fallback on Windows. */
+#ifndef _WIN32
+    for (int i = 0; i < ants; i++) {
+        pthread_create(&threads[i], NULL, aco_thread_func, &arg_array[i]);
+    }
     for (int i = 0; i < ants; i++) {
         pthread_join(threads[i], NULL);
     }
 #else
-    /* fallback single-thread loop for Windows placeholder, repeated 'ants' times */
+    /* Windows fallback: run them sequentially in this thread for demonstration. */
     for (int i = 0; i < ants; i++) {
-        aco_thread_func(thread_data[i]);
+        aco_thread_func(&arg_array[i]);
     }
 #endif
 
-    /* merge local deltas into the global pheromones */
+    /* Merge local deltas into the global pheromones */
     int rc = aco_shared_merge_deltas(ctx, thread_data, ants);
 
-    /* free all local data */
+    /* Free all local data */
     for (int i = 0; i < ants; i++) {
         aco_shared_free_local_data(thread_data[i]);
         thread_data[i] = NULL;
@@ -317,9 +337,7 @@ int aco_v1_run_iteration_threaded(AntNetContext *ctx)
 #ifndef _WIN32
     free(threads);
 #endif
-
-    /* clear the global pointer */
-    g_aco_shared_ctx_tls = NULL;
+    free(arg_array);
 
     return rc;
 }

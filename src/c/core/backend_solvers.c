@@ -5,7 +5,6 @@
  * Key file for coordinating multi-solver pathfinding in AntNet.
 */
 
-
 #include "../../../include/core/backend_solvers.h"
 #include "../../../include/managers/cpu_acoV1_algo_manager.h"
 #include "../../../include/managers/cpu_random_algo_manager.h"
@@ -40,8 +39,8 @@ int pub_run_iteration(int context_id)
 /*
  * pub_get_best_path
  * Retrieves the current best path from the random solver, or returns a mock path
- * if none is available. Thread-safe. Retrieval from ACO and Brute-Force solvers can
- * be implemented separately or parameterized in the future.
+ * if none is available. Thread-safe. Retrieval from ACO and Brute-Force solvers
+ * can be implemented separately or parameterized in the future.
  */
 int pub_get_best_path(
     int context_id,
@@ -105,6 +104,16 @@ int pub_get_best_path(
  * Executes the ACO, Random, and Brute-Force solvers in sequence.
  * Each solver may improve its internal best path. SASA states are updated accordingly,
  * and best paths from each algorithm are returned via the output arrays.
+ *
+ * OLD APPROACH:
+ *     1) Held ctx->lock from start to end,
+ *     2) Then called aco_v1_run_iteration_threaded, which tries locking again => deadlock.
+ *
+ * NEW APPROACH:
+ *     1) Lock *briefly* to increment ctx->iteration,
+ *     2) Unlock,
+ *     3) Call each solver (they do internal locking),
+ *     4) Re-lock only if needed for local tasks.
  */
 int pub_run_all_solvers(
     int  context_id,
@@ -135,27 +144,28 @@ int pub_run_all_solvers(
         return ERR_INVALID_CONTEXT;
     }
 
+    /* Step 1: briefly lock just to increment iteration safely. */
 #ifndef _WIN32
     pthread_mutex_lock(&ctx->lock);
 #endif
-    /*
-     * Increment iteration for each call to run_all_solvers.
-     * This ensures SASA "iter_idx" moves forward properly.
-     */
     ctx->iteration++;
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
 
+    /* Initialize outputs for ACO. */
     *out_len_aco     = 0;
     *out_latency_aco = 0;
 
-    /* 1) ACO */
+    /*
+     * 2) ACO solver
+     *    We do *not* hold ctx->lock here, to avoid nested lock in aco_shared_merge_deltas.
+     */
     {
         int old_aco_latency = (ctx->aco_best_length > 0) ? ctx->aco_best_latency : INT_MAX;
         int rc = aco_algo_manager_run_iteration(ctx);
         if (rc != ERR_SUCCESS && rc != ERR_NO_TOPOLOGY)
         {
-#ifndef _WIN32
-            pthread_mutex_unlock(&ctx->lock);
-#endif
             return rc;
         }
         rc = aco_algo_manager_search_path(ctx, 0, 1,
@@ -163,12 +173,16 @@ int pub_run_all_solvers(
                                           out_len_aco, out_latency_aco);
         if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND)
         {
-#ifndef _WIN32
-            pthread_mutex_unlock(&ctx->lock);
-#endif
             return rc;
         }
 
+        /*
+         * For SASA updating, we do need ctx->lock, but let's lock *only* here
+         * for the check & update. 
+         */
+#ifndef _WIN32
+        pthread_mutex_lock(&ctx->lock);
+#endif
         if (ctx->aco_best_length > 0 && ctx->aco_best_latency < old_aco_latency)
         {
             priv_update_on_improvement(
@@ -195,11 +209,24 @@ int pub_run_all_solvers(
             printf("[RANK] ACO improved => order: #%d first, #%d second, #%d third\n",
                    rank_order[0], rank_order[1], rank_order[2]);
         }
+#ifndef _WIN32
+        pthread_mutex_unlock(&ctx->lock);
+#endif
     }
 
-    /* 2) RANDOM */
+    /*
+     * 3) RANDOM solver (similar approach, do not hold ctx->lock across entire run)
+     */
     {
-        int old_random_latency = (ctx->random_best_length > 0) ? ctx->random_best_latency : INT_MAX;
+        int old_random_latency;
+#ifndef _WIN32
+        pthread_mutex_lock(&ctx->lock);
+#endif
+        old_random_latency = (ctx->random_best_length > 0) ? ctx->random_best_latency : INT_MAX;
+#ifndef _WIN32
+        pthread_mutex_unlock(&ctx->lock);
+#endif
+
         int rc = random_algo_manager_run(
             ctx, 0, 1,
             out_nodes_random, max_size_random,
@@ -207,12 +234,15 @@ int pub_run_all_solvers(
         );
         if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND)
         {
-#ifndef _WIN32
-            pthread_mutex_unlock(&ctx->lock);
-#endif
             return rc;
         }
 
+        /*
+         * If random improved, lock only for the SASA update portion.
+         */
+#ifndef _WIN32
+        pthread_mutex_lock(&ctx->lock);
+#endif
         if (ctx->random_best_length > 0 && ctx->random_best_latency < old_random_latency)
         {
             priv_update_on_improvement(
@@ -239,11 +269,24 @@ int pub_run_all_solvers(
             printf("[RANK] Random improved => order: #%d first, #%d second, #%d third\n",
                    rank_order[0], rank_order[1], rank_order[2]);
         }
+#ifndef _WIN32
+        pthread_mutex_unlock(&ctx->lock);
+#endif
     }
 
-    /* 3) BRUTE */
+    /*
+     * 4) BRUTE solver (same pattern)
+     */
     {
-        int old_brute_latency = (ctx->brute_best_length > 0) ? ctx->brute_best_latency : INT_MAX;
+        int old_brute_latency;
+#ifndef _WIN32
+        pthread_mutex_lock(&ctx->lock);
+#endif
+        old_brute_latency = (ctx->brute_best_length > 0) ? ctx->brute_best_latency : INT_MAX;
+#ifndef _WIN32
+        pthread_mutex_unlock(&ctx->lock);
+#endif
+
         int rc = brute_force_algo_manager_run(
             ctx, 0, 1,
             out_nodes_brute, max_size_brute,
@@ -251,12 +294,12 @@ int pub_run_all_solvers(
         );
         if (rc != ERR_SUCCESS && rc != ERR_NO_PATH_FOUND)
         {
-#ifndef _WIN32
-            pthread_mutex_unlock(&ctx->lock);
-#endif
             return rc;
         }
 
+#ifndef _WIN32
+        pthread_mutex_lock(&ctx->lock);
+#endif
         if (ctx->brute_best_length > 0 && ctx->brute_best_latency < old_brute_latency)
         {
             priv_update_on_improvement(
@@ -283,10 +326,11 @@ int pub_run_all_solvers(
             printf("[RANK] Brute improved => order: #%d first, #%d second, #%d third\n",
                    rank_order[0], rank_order[1], rank_order[2]);
         }
+#ifndef _WIN32
+        pthread_mutex_unlock(&ctx->lock);
+#endif
     }
 
-#ifndef _WIN32
-    pthread_mutex_unlock(&ctx->lock);
-#endif
+    /* Done. No final context lock needed here. */
     return ERR_SUCCESS;
 }
