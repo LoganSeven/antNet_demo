@@ -48,10 +48,25 @@ int pub_init_from_config(const char* config_path)
 #ifndef _WIN32
     pthread_mutex_lock(&ctx->lock);
 #endif
+    /* Copy config into the context inside the lock. */
     ctx->config = tmpcfg;
 #ifndef _WIN32
     pthread_mutex_unlock(&ctx->lock);
 #endif
+
+    /*
+     * Now call pub_set_aco_params outside the lock so that
+     * the nested lock attempt is avoided, preventing deadlock.
+     */
+    pub_set_aco_params(
+        context_id,
+        tmpcfg.ant_alpha,
+        tmpcfg.ant_beta,
+        tmpcfg.ant_Q,
+        tmpcfg.ant_evaporation,
+        tmpcfg.nb_ants
+    );
+
     return context_id;
 }
 
