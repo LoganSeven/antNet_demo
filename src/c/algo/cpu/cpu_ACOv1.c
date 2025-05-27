@@ -15,7 +15,7 @@
 #include "../../../../include/algo/cpu/cpu_ACOv1.h"
 #include "../../../../include/algo/cpu/cpu_ACOv1_threaded.h"
 #include "../../../../include/types/antnet_aco_v1_types.h"
-#include "../../../../include/core/backend.h"
+#include "../../../../include/rendering/heatmap_renderer_api.h"
 /* Added header for path reordering */
 #include "../../../../include/algo/cpu/cpu_ACOv1_path_reorder.h"
 

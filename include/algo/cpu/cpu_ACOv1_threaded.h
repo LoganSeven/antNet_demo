@@ -9,7 +9,7 @@
 #ifndef CPU_ACOV1_THREADED_H
 #define CPU_ACOV1_THREADED_H
 
-#include "../../core/backend.h"
+#include "../../rendering/heatmap_renderer_api.h"
 
 /*
  * aco_v1_run_iteration_threaded

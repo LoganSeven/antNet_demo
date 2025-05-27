@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-#include "../../core/backend.h"
+#include "../../rendering/heatmap_renderer_api.h"
 
 /*
  * aco_v1_init: to be implemented with actual pheromone and ant structure setups.

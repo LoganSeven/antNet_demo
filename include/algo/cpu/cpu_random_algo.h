@@ -8,7 +8,7 @@
 #ifndef RANDOM_ALGO_H
 #define RANDOM_ALGO_H
 
-#include "../../core/backend.h"  /* for AntNetContext */
+#include "../../rendering/heatmap_renderer_api.h"  /* for AntNetContext */
 #include "../../consts/error_codes.h"  /* for ERR_SUCCESS and error codes */
 
 /*

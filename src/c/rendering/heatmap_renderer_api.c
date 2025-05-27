@@ -6,16 +6,13 @@
 */
 
 #include "../../../include/core/backend_init.h"
-#include "../../../include/core/backend.h"
+#include "../../../include/rendering/heatmap_renderer_api.h"
 #include "../../../include/consts/error_codes.h"
 #include "../../../include/rendering/heatmap_renderer_async.h"
-
 
 #ifndef _WIN32
 #include <pthread.h>
 #endif
-
-
 
 /*
  * pub_render_heatmap_rgba
@@ -63,7 +60,7 @@ int pub_renderer_async_init(int initial_width, int initial_height)
 
 /*
  * pub_renderer_async_shutdown
- * Stops the background renderer thread if running, cleans up. 
+ * Stops the background renderer thread if running, cleans up.
  * Safe to call multiple times.
  */
 int pub_renderer_async_shutdown(void)
@@ -75,4 +72,3 @@ int pub_renderer_async_shutdown(void)
     }
     return ERR_SUCCESS;
 }
-

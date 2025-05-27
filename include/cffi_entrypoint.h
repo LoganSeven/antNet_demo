@@ -38,7 +38,7 @@ extern "C" {
 
 
 /* 3) The main backend headers that declare the functions Python needs */
-#include "./core/backend.h"            // antnet_initialize, antnet_run_iteration, etc.
+#include "./rendering/heatmap_renderer_api.h" //antnet_initialize, antnet_run_iteration, etc.
 #include "./core/backend_topology.h"   // antnet_update_topology
 
 /* 4) Other solver modules or managers that Python calls or references */

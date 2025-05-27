@@ -12,7 +12,7 @@
 #include <limits.h>
 #include "../../../../include/consts/error_codes.h"
 #include "../../../../include/algo/cpu/cpu_random_algo.h"
-#include "../../../../include/core/backend.h"
+#include "../../../../include/rendering/heatmap_renderer_api.h"
 /* Added header to reorder path for display */
 #include "../../../../include/algo/cpu/cpu_random_algo_path_reorder.h"
 

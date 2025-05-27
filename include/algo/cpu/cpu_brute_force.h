@@ -8,7 +8,7 @@
 #ifndef CPU_BRUTE_FORCE_H
 #define CPU_BRUTE_FORCE_H
 
-#include "../../core/backend.h"  /* for AntNetContext */
+#include "../../rendering/heatmap_renderer_api.h"  /* for AntNetContext */
 
 /*
  * brute_force_search_step: enumerates exactly one new path in ascending order

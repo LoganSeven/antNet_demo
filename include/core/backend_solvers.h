@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 #include "backend_init.h" /* ensures priv_get_context_by_id is visible */
-#include "backend.h"      /* public API definitions */
+#include "../rendering/heatmap_renderer_api.h"      /* public API definitions */
 
 #ifdef __cplusplus
 }

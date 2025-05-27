@@ -5,7 +5,7 @@
  * Minimal overhead, useful for measuring performance against advanced solvers.
 */
 
-#include "../../../include/core/backend.h"
+#include "../../../include/rendering/heatmap_renderer_api.h"
 #include "../../../include/managers/cpu_random_algo_manager.h"
 #include "../../../include/algo/cpu/cpu_random_algo.h"
 

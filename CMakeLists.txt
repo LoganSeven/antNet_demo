@@ -39,7 +39,6 @@ set(SOURCE_FILES
     src/c/algo/cpu/cpu_brute_force.c
     src/c/algo/cpu/cpu_random_algo.c
     src/c/algo/cpu/cpu_random_algo_path_reorder.c
-    src/c/core/backend.c
     src/c/core/backend_init.c
     src/c/core/backend_params.c
     src/c/core/backend_solvers.c
@@ -51,6 +50,7 @@ set(SOURCE_FILES
     src/c/managers/hop_map_manager.c
     src/c/managers/ranking_manager.c
     src/c/rendering/heatmap_renderer.c
+    src/c/rendering/heatmap_renderer_api.c
     src/c/rendering/heatmap_renderer_async.c
     third_party/ini.c
 )

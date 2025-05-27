@@ -6,7 +6,7 @@
 */
 
 
-#include "../../../include/core/backend.h"
+#include "../../../include/rendering/heatmap_renderer_api.h"
 #include "../../../include/managers/cpu_acoV1_algo_manager.h"
 #include "../../../include/algo/cpu/cpu_ACOv1.h"
 

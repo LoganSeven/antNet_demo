@@ -9,7 +9,7 @@
 #ifndef CPU_ACOv1_SHARED_STRUCTS_H
 #define CPU_ACOv1_SHARED_STRUCTS_H
 
-#include "../../core/backend.h"
+#include "../../rendering/heatmap_renderer_api.h"
 
 /*
  * AcoThreadLocalData

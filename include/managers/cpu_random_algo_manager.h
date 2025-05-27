@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-#include "../core/backend.h"
+#include "../rendering/heatmap_renderer_api.h"
 
 /* random_algo_manager_init
  * Initializes the random solver (if needed).

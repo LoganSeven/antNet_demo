@@ -13,8 +13,7 @@ ini_c       = os.path.join(this_dir, "../../../third_party/ini.c")
 
 ffi.set_source(
     "backend_cffi",
-    f"""#include "core/backend.h"
-#include "algo/cpu/cpu_ACOv1.h"
+    f"""#include "algo/cpu/cpu_ACOv1.h"
 #include "algo/cpu/cpu_ACOv1_path_reorder.h"
 #include "algo/cpu/cpu_ACOv1_shared_structs.h"
 #include "algo/cpu/cpu_ACOv1_threaded.h"
@@ -35,6 +34,7 @@ ffi.set_source(
 #include "managers/hop_map_manager.h"
 #include "managers/ranking_manager.h"
 #include "rendering/heatmap_renderer.h"
+#include "rendering/heatmap_renderer_api.h"
 #include "rendering/heatmap_renderer_async.h"
 #include "types/antnet_aco_v1_params.h"
 #include "types/antnet_aco_v1_types.h"
@@ -52,13 +52,13 @@ ffi.set_source(
         os.path.join(src_c_dir, "managers/config_manager.c"),
         os.path.join(src_c_dir, "managers/cpu_brute_force_algo_manager.c"),
         os.path.join(src_c_dir, "managers/hop_map_manager.c"),
-        os.path.join(src_c_dir, "core/backend.c"),
         os.path.join(src_c_dir, "core/backend_params.c"),
         os.path.join(src_c_dir, "core/backend_topology.c"),
         os.path.join(src_c_dir, "core/backend_init.c"),
         os.path.join(src_c_dir, "core/backend_solvers.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer_async.c"),
         os.path.join(src_c_dir, "rendering/heatmap_renderer.c"),
+        os.path.join(src_c_dir, "rendering/heatmap_renderer_api.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1_shared_structs.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_brute_force.c"),
         os.path.join(src_c_dir, "algo/cpu/cpu_ACOv1_threaded.c"),

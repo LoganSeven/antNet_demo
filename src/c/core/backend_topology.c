@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "../../../include/core/backend.h"
+#include "../../../include/rendering/heatmap_renderer_api.h"
 #include "../../../include/core/backend_topology.h"
 #include "../../../include/consts/error_codes.h"
 #include "../../../include/algo/cpu/cpu_brute_force.h"

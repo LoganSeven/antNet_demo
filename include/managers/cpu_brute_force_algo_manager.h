@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-#include "../core/backend.h"
+#include "../rendering/heatmap_renderer_api.h"
 
 /* brute_force_algo_manager_init
  * Initializes the brute-force solver (if needed).

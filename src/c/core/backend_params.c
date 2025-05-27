@@ -29,6 +29,7 @@ int pub_init_from_config(const char* config_path)
     {
         return -1;
     }
+
     int context_id = pub_initialize(
         tmpcfg.set_nb_nodes,
         tmpcfg.min_hops,
@@ -65,6 +66,17 @@ int pub_init_from_config(const char* config_path)
         tmpcfg.ant_Q,
         tmpcfg.ant_evaporation,
         tmpcfg.nb_ants
+    );
+
+    /*
+     * NEW: Also apply the ranking coefficients from the .ini
+     * by calling the existing pub_set_sasa_params function.
+     */
+    pub_set_sasa_params(
+        context_id,
+        tmpcfg.ranking_alpha,
+        tmpcfg.ranking_beta,
+        tmpcfg.ranking_gamma
     );
 
     return context_id;

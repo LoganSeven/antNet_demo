@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-#include "backend.h" /* for AntNetContext, etc. */
+#include "../rendering/heatmap_renderer_api.h"
 
 /*
  * get_context_by_id

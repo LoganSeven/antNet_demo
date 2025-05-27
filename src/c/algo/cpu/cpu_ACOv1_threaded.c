@@ -9,7 +9,7 @@
 #include "../../../../include/algo/cpu/cpu_ACOv1_shared_structs.h"
 #include "../../../../include/algo/cpu/cpu_ACOv1.h"
 #include "../../../../include/types/antnet_aco_v1_types.h"
-#include "../../../../include/core/backend.h"
+#include "../../../../include/rendering/heatmap_renderer_api.h"
 #include "../../../../include/consts/error_codes.h"
 
 #include <stdio.h>
