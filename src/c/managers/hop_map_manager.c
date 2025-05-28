@@ -3,6 +3,10 @@
  * Builds and maintains a hop-based node map, assigning positions and delays.
  * Creates default edges and exports topology data in a thread-safe manner.
  * Useful for demonstration or simple graph generation within AntNet.
+ *
+ * Now also exposes pub_hop_map_* functions that operate on the HopMapManager
+ * stored inside AntNetContext->hop_map_mgr, consolidating node/edge creation
+ * exclusively in the C side.
 */
 
 #include <stdlib.h>
@@ -11,12 +15,14 @@
 #include <math.h>
 #include <time.h>
 
-
 #include "../../../include/managers/hop_map_manager.h"
+#include "../../../include/consts/error_codes.h"
+#include "../../../include/core/backend_init.h"       /* priv_get_context_by_id */
+#include "../../../include/managers/hop_map_manager.h"/* HopMapManager, NodeData, EdgeData */
 
 /*
   Minimal reference implementation of a HopMapManager in C.
-  Thread safety ensured via the lock mutex. This code is purely for demonstration.
+  Thread-safety ensured via the lock mutex. This code is purely for demonstration.
   Integrate random seeding and advanced placement logic as needed.
 */
 
@@ -46,7 +52,7 @@ HopMapManager* hop_map_manager_create() {
     mgr->edges      = NULL;
     mgr->edge_count = 0;
 
-    /* default random delay range (old 10..50 now changed to a default safe range) */
+    /* default random delay range */
     mgr->default_min_delay = 10;
     mgr->default_max_delay = 50;
 
@@ -106,8 +112,6 @@ static int hop_map_manager_get_random_delay(const HopMapManager *mgr) {
  * hop_map_manager_initialize_map
  * Allocates new node arrays for start, end, and hops if total_nodes changed.
  * If total_nodes is unchanged, it returns immediately (skips re-randomizing latencies).
- * On success, the node positions are placed at default 1000x600 spacing
- * with some margin. Edges are cleared here (unless re-created later).
  */
 void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
     if (!mgr) return;
@@ -116,14 +120,12 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
     pthread_mutex_lock(&mgr->lock);
 #endif
 
-    /* count current total */
     size_t current_count = 0;
     if (mgr->start_node) current_count++;
     if (mgr->end_node)   current_count++;
     current_count += mgr->hop_count;
 
     if ((int)current_count == total_nodes) {
-        /* Node count unchanged => skip re-init */
 #ifndef _WIN32
         pthread_mutex_unlock(&mgr->lock);
 #endif
@@ -154,8 +156,7 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
     float height = 600.0f;
     float margin = 50.0f;
     int radius   = 15;
-
-    float mid_y = height / 2.0f;
+    float mid_y  = height / 2.0f;
 
     /* Start node */
     mgr->start_node->node_id  = 0;
@@ -187,7 +188,7 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
         float grid_left   = mgr->start_node->x + 100.0f;
         float grid_right  = mgr->end_node->x   - 100.0f;
         if (grid_right < grid_left) {
-            grid_left = mgr->start_node->x;
+            grid_left  = mgr->start_node->x;
             grid_right = mgr->start_node->x;
         }
 
@@ -231,7 +232,6 @@ void hop_map_manager_initialize_map(HopMapManager *mgr, int total_nodes) {
  * This re-lays out the *existing* start_node, end_node, and hop_nodes
  * within the specified scene_width and scene_height. The function
  * does not modify node_id or delay_ms.
- * The layout ensures horizontal fill and vertical centering in a grid.
  */
 void hop_map_manager_recalc_positions(HopMapManager *mgr,
                                       float scene_width,
@@ -250,7 +250,6 @@ void hop_map_manager_recalc_positions(HopMapManager *mgr,
         return;
     }
 
-    /* Basic margins */
     float margin = 50.0f;
     int radius = 15;
 
@@ -470,4 +469,180 @@ void hop_map_manager_export_topology(HopMapManager *mgr,
 #ifndef _WIN32
     pthread_mutex_unlock(&mgr->lock);
 #endif
+}
+
+/* ------------------------------------------------------------------
+ *                 New public 'pub_' wrappers
+ * ------------------------------------------------------------------
+ *
+ * Each function locks the same AntNetContext->lock used by the solver,
+ * then calls the HopMapManager. This ensures thread safety across modules.
+*/
+
+/*
+ * pub_hop_map_set_delay_range
+ * Applies the given min/max to the context's HopMapManager in a thread-safe manner.
+ */
+int pub_hop_map_set_delay_range(int context_id, int min_d, int max_d)
+{
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
+    if (!ctx) {
+        return ERR_INVALID_CONTEXT;
+    }
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    if (!ctx->hop_map_mgr) {
+        /* Create if missing. This is optional logic. */
+        ctx->hop_map_mgr = hop_map_manager_create();
+        if (!ctx->hop_map_mgr) {
+#ifndef _WIN32
+            pthread_mutex_unlock(&ctx->lock);
+#endif
+            return ERR_MEMORY_ALLOCATION;
+        }
+    }
+    /* HopMapManager usage is also locked internally, but we hold this outer
+     * lock to keep everything consistent if solver or other calls happen. */
+    hop_map_manager_set_delay_range(ctx->hop_map_mgr, min_d, max_d);
+
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+    return ERR_SUCCESS;
+}
+
+/*
+ * pub_hop_map_initialize
+ * Initializes or re-initializes the HopMapManager with total_nodes.
+ */
+int pub_hop_map_initialize(int context_id, int total_nodes)
+{
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
+    if (!ctx) {
+        return ERR_INVALID_CONTEXT;
+    }
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    if (!ctx->hop_map_mgr) {
+        ctx->hop_map_mgr = hop_map_manager_create();
+        if (!ctx->hop_map_mgr) {
+#ifndef _WIN32
+            pthread_mutex_unlock(&ctx->lock);
+#endif
+            return ERR_MEMORY_ALLOCATION;
+        }
+    }
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    /* Now call the manager's initialize_map inside the same lock. */
+    hop_map_manager_initialize_map(ctx->hop_map_mgr, total_nodes);
+
+    return ERR_SUCCESS;
+}
+
+/*
+ * pub_hop_map_create_default_edges
+ */
+int pub_hop_map_create_default_edges(int context_id)
+{
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
+    if (!ctx) {
+        return ERR_INVALID_CONTEXT;
+    }
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    if (!ctx->hop_map_mgr) {
+#ifndef _WIN32
+        pthread_mutex_unlock(&ctx->lock);
+#endif
+        return ERR_NO_TOPOLOGY;
+    }
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    hop_map_manager_create_default_edges(ctx->hop_map_mgr);
+    return ERR_SUCCESS;
+}
+
+/*
+ * pub_hop_map_recalc_positions
+ * Re-lays out existing nodes for the new scene size.
+ */
+int pub_hop_map_recalc_positions(int context_id, float scene_w, float scene_h)
+{
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
+    if (!ctx) {
+        return ERR_INVALID_CONTEXT;
+    }
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    if (!ctx->hop_map_mgr) {
+#ifndef _WIN32
+        pthread_mutex_unlock(&ctx->lock);
+#endif
+        return ERR_NO_TOPOLOGY;
+    }
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    hop_map_manager_recalc_positions(ctx->hop_map_mgr, scene_w, scene_h);
+    return ERR_SUCCESS;
+}
+
+/*
+ * pub_hop_map_export_topology
+ * Exports the current HopMapManager node+edge data to the caller.
+ * The caller supplies out_nodes/out_node_count, out_edges/out_edge_count, just
+ * like pub_update_topology does for the solver. Returns 0 or negative on error.
+ */
+int pub_hop_map_export_topology(int context_id,
+                                NodeData *out_nodes, int *out_node_count,
+                                EdgeData *out_edges, int *out_edge_count)
+{
+    if (!out_node_count || !out_edge_count) {
+        return ERR_INVALID_ARGS;
+    }
+
+    AntNetContext* ctx = priv_get_context_by_id(context_id);
+    if (!ctx) {
+        return ERR_INVALID_CONTEXT;
+    }
+
+#ifndef _WIN32
+    pthread_mutex_lock(&ctx->lock);
+#endif
+    if (!ctx->hop_map_mgr) {
+        /* 0 nodes/edges if not inited */
+        if (out_node_count) *out_node_count = 0;
+        if (out_edge_count) *out_edge_count = 0;
+#ifndef _WIN32
+        pthread_mutex_unlock(&ctx->lock);
+#endif
+        return ERR_NO_TOPOLOGY;
+    }
+#ifndef _WIN32
+    pthread_mutex_unlock(&ctx->lock);
+#endif
+
+    size_t node_count_sz = 0;
+    size_t edge_count_sz = 0;
+    hop_map_manager_export_topology(ctx->hop_map_mgr,
+                                    out_nodes, &node_count_sz,
+                                    out_edges, &edge_count_sz);
+
+    if (out_node_count) *out_node_count = (int)node_count_sz;
+    if (out_edge_count) *out_edge_count = (int)edge_count_sz;
+
+    return ERR_SUCCESS;
 }

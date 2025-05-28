@@ -106,6 +106,17 @@ typedef struct {
 } AcoV1State;
 typedef struct HeatmapRenderer HeatmapRenderer;
 typedef struct {
+    pthread_mutex_t lock;
+    NodeData *start_node;
+    NodeData *end_node;
+    NodeData *hop_nodes;
+    size_t hop_count;
+    EdgeData *edges;
+    size_t edge_count;
+    int default_min_delay;
+    int default_max_delay;
+} HopMapManager;
+typedef struct {
     int node_count;
     int min_hops;
     int max_hops;
@@ -131,6 +142,7 @@ typedef struct {
     SasaState random_sasa;
     SasaState brute_sasa;
     SasaCoeffs sasa_coeffs;
+    HopMapManager *hop_map_mgr;
 } AntNetContext;
 
 

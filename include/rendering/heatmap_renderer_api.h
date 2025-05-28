@@ -1,10 +1,9 @@
-/* Relative Path: include/core/backend.h */
-/*
+/* Relative Path: include/rendering/heatmap_renderer_api.h */
+/* 
  * Main public API for initializing, running, and managing AntNet contexts.
  * Defines the AntNetContext struct and functions for solver coordination, config, and I/O.
  * Entry point for external modules interacting with the AntNet backend.
 */
-
 
 #ifndef BACKEND_H
 #define BACKEND_H
@@ -17,14 +16,17 @@
 #include "../core/backend_thread_defs.h"
 #include "../types/antnet_aco_v1_types.h"
 #include "../rendering/heatmap_renderer.h"
-#include "../rendering/heatmap_renderer_async.h" /* added for async approach */
-
+#include "../rendering/heatmap_renderer_async.h"
+#include "../managers/hop_map_manager.h"
 
 /* NEW: include RankingEntry definition */
 #include "../types/antnet_ranking_types.h"
 
 /* NEW: include SasaCoeffs structure */
 #include "../types/antnet_sasa_types.h"
+
+/* Forward-declare HopMapManager so we can store a pointer to it. */
+struct HopMapManager;
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,6 +80,9 @@ typedef struct AntNetContext
 
     /* NEW: store SASA coefficients used in run_all_solvers, etc. */
     SasaCoeffs sasa_coeffs;
+
+    /* NEW: pointer to the HopMapManager for node/edge arrangement. */
+    HopMapManager *hop_map_mgr; /* Manages hop-based node layout inside this context */
 
 } AntNetContext;
 
@@ -189,7 +194,6 @@ int pub_get_aco_params(
     float* out_evaporation,
     int*  out_num_ants
 );
-
 
 
 #ifdef __cplusplus
